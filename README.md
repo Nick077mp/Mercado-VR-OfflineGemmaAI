@@ -1,15 +1,18 @@
-# 🎙️ Sistema de Asistente de Voz con IA - 100% Offline
+# 🎙️ Waygroup Local Voice Assistant - 100% Offline
+
+> An offline AI assistant that responds to prompts using a custom-trained cloned voice. No internet required, fully private, and personalized. **Waygroup Project**
 
 Sistema completo de asistente de voz que funciona **totalmente offline** sin necesidad de internet.
 
 ## 🚀 Características
 
 - ✅ **100% Offline** - No requiere conexión a internet
-- 🎤 **Reconocimiento de voz** - Vosk (español)
+- 🎤 **Reconocimiento de voz** - Faster-Whisper con Silero VAD
 - 🤖 **Inteligencia Artificial** - Mistral via Ollama
-- 🔊 **Síntesis de voz** - pyttsx3 (voces del sistema)
+- 🔊 **Síntesis de voz** - Piper TTS (voces españolas de calidad)
 - ⚡ **Ultra rápido** - Audio generado en <0.2 segundos
 - 🇨🇴 **Español colombiano** - Optimizado para español
+- 🔧 **CFFI Error Suppression** - Sin ventanas emergentes en Windows
 
 ## 📋 Requisitos Previos
 
@@ -175,4 +178,4 @@ Proyecto personal - Uso libre
 Nicolás - Programador
 
 ---
-**Nota**: Este sistema está optimizado para Windows. Para Linux/Mac, considera reemplazar pyttsx3 por otra solución TTS.
+**Nota**: Este sistema está optimizado para Windows y ahora incluye supresión de errores CFFI para mejor compatibilidad.
