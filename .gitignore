@@ -1,0 +1,45 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+.venv/
+env/
+ENV/
+*.egg-info/
+dist/
+build/
+
+# Logs
+logs/
+*.log
+
+# Audio temporal
+temp_audio/
+test_audio/
+sample_audio/
+*.m4a
+
+# Vosk models (grandes)
+vosk-model-*/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+
+# Audio de referencia (mantener en repo)
+!colombian_voice.wav
+
+# Test files
+test_cffi_suppression.py
