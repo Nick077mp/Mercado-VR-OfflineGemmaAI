@@ -1,0 +1,1082 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<FGenericCrashContext>
+<RuntimeProperties>
+<CrashVersion>3</CrashVersion>
+<ExecutionGuid>5E5E9F6B43343D33750468AB488BF23C</ExecutionGuid>
+<CrashGUID>UECC-Windows-3EF4C1694F28608FD896FAA95EAC530A_0000</CrashGUID>
+<IsEnsure>false</IsEnsure>
+<IsStall>false</IsStall>
+<IsAssert>false</IsAssert>
+<CrashType>Hang</CrashType>
+<ErrorMessage>GameThread timed out waiting for RenderThread after 120.00 seconds:
+  0x00007ff9b7a41c44 ntdll.dll!UnknownFunction []
+  0x00007ff9b4d5bc5f KERNELBASE.dll!UnknownFunction []
+  0x00007ff6fc971463 AI_CHAT_Plugin.exe!FEventWin::Wait() []
+  0x00007ff6fc3a0048 AI_CHAT_Plugin.exe!FNamedTaskThread::ProcessTasksNamedThread() []
+  0x00007ff6fc3a094e AI_CHAT_Plugin.exe!FNamedTaskThread::ProcessTasksUntilQuit() []
+  0x00007ff6fc3afa17 AI_CHAT_Plugin.exe!FTaskGraphCompatibilityImplementation::WaitOnNamedThreadForTasks() []
+  0x00007ff6fc3b01a3 AI_CHAT_Plugin.exe!FTaskGraphCompatibilityImplementation::WaitUntilTasksComplete() []
+
+Check log for full callstack.</ErrorMessage>
+<CrashReporterMessage></CrashReporterMessage>
+<CrashReporterMessage>Attended</CrashReporterMessage>
+<ProcessId>10440</ProcessId>
+<SecondsSinceStart>102</SecondsSinceStart>
+<IsInternalBuild>false</IsInternalBuild>
+<IsPerforceBuild>false</IsPerforceBuild>
+<IsWithDebugInfo>false</IsWithDebugInfo>
+<IsSourceDistribution>false</IsSourceDistribution>
+<GameName>UE-AI_CHAT_Plugin</GameName>
+<ExecutableName>AI_CHAT_Plugin</ExecutableName>
+<BuildConfiguration>Development</BuildConfiguration>
+<GameSessionID></GameSessionID>
+<PlatformName>Windows</PlatformName>
+<PlatformFullName>Windows</PlatformFullName>
+<PlatformNameIni>Windows</PlatformNameIni>
+<EngineMode>Game</EngineMode>
+<EngineModeEx>Unset</EngineModeEx>
+<DeploymentName></DeploymentName>
+<EngineVersion>5.6.1-44394996+++UE5+Release-5.6</EngineVersion>
+<EngineCompatibleVersion>5.6.1-44394996+++UE5+Release-5.6</EngineCompatibleVersion>
+<CommandLine> AI_CHAT_Plugin</CommandLine>
+<LanguageLCID>9</LanguageLCID>
+<AppDefaultLocale>es-CO</AppDefaultLocale>
+<BuildVersion>++UE5+Release-5.6-CL-44394996</BuildVersion>
+<Symbols>**UE5*Release-5.6-CL-44394996-Win64-Development</Symbols>
+<IsUERelease>false</IsUERelease>
+<IsRequestingExit>false</IsRequestingExit>
+<UserName></UserName>
+<BaseDir>C:/Users/USUARIO/ai_voice_server/local-voice-assistant/AI_Push-to-talk/Windows/AI_CHAT_Plugin/Binaries/Win64/</BaseDir>
+<RootDir>C:/Users/USUARIO/ai_voice_server/local-voice-assistant/AI_Push-to-talk/Windows/</RootDir>
+<MachineId>AD5E3C9042197D8D5435E886226C1E46</MachineId>
+<LoginId>ad5e3c9042197d8d5435e886226c1e46</LoginId>
+<EpicAccountId></EpicAccountId>
+<SourceContext></SourceContext>
+<UserDescription></UserDescription>
+<UserActivityHint></UserActivityHint>
+<CrashDumpMode>0</CrashDumpMode>
+<GameStateName></GameStateName>
+<Misc.NumberOfCores>14</Misc.NumberOfCores>
+<Misc.NumberOfCoresIncludingHyperthreads>20</Misc.NumberOfCoresIncludingHyperthreads>
+<Misc.Is64bitOperatingSystem>1</Misc.Is64bitOperatingSystem>
+<Misc.CPUVendor>GenuineIntel</Misc.CPUVendor>
+<Misc.CPUBrand>13th Gen Intel(R) Core(TM) i7-13700H</Misc.CPUBrand>
+<Misc.PrimaryGPUBrand>Intel(R) Iris(R) Xe Graphics</Misc.PrimaryGPUBrand>
+<Misc.OSVersionMajor>Windows 11 (25H2) [10.0.26200.7623]</Misc.OSVersionMajor>
+<Misc.OSVersionMinor></Misc.OSVersionMinor>
+<Misc.AnticheatProvider></Misc.AnticheatProvider>
+<MemoryStats.TotalPhysical>16868806656</MemoryStats.TotalPhysical>
+<MemoryStats.TotalVirtual>44786094080</MemoryStats.TotalVirtual>
+<MemoryStats.PageSize>4096</MemoryStats.PageSize>
+<MemoryStats.TotalPhysicalGB>16</MemoryStats.TotalPhysicalGB>
+<MemoryStats.AvailablePhysical>0</MemoryStats.AvailablePhysical>
+<MemoryStats.AvailableVirtual>0</MemoryStats.AvailableVirtual>
+<MemoryStats.UsedPhysical>0</MemoryStats.UsedPhysical>
+<MemoryStats.PeakUsedPhysical>0</MemoryStats.PeakUsedPhysical>
+<MemoryStats.UsedVirtual>0</MemoryStats.UsedVirtual>
+<MemoryStats.PeakUsedVirtual>0</MemoryStats.PeakUsedVirtual>
+<MemoryStats.bIsOOM>0</MemoryStats.bIsOOM>
+<MemoryStats.OOMAllocationSize>0</MemoryStats.OOMAllocationSize>
+<MemoryStats.OOMAllocationAlignment>0</MemoryStats.OOMAllocationAlignment>
+<NumMinidumpFramesToIgnore>0</NumMinidumpFramesToIgnore>
+<CallStack></CallStack>
+<PCallStack>
+
+ntdll           0x00007ff9b78e0000 + 161c44          
+KERNELBASE      0x00007ff9b4d20000 + 3bc5f           
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a31463         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1460048         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 146094e         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 146fa17         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 14701a3         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1b1ba5d         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 635145f         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 5aaa7d8         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 5b02b83         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 5b02005         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 5a5ada2         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 5a265ca         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 5a8f29d         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 4bea0d8         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 5a98ddb         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 5a3d100         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 5a60b3e         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 64a5b11         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 64c4177         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 146d503         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 14603f9         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 146094e         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 64e41fc         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 64e4b19         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1aa1968         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a9a5ff         
+KERNEL32        0x00007ff9b7390000 + 2e8d7           
+</PCallStack>
+<PCallStackHash>87308BFC241608A0C9AAA4F576C34ECDE5458E9F</PCallStackHash>
+<GPUBreadcrumbs>
+<FormatVersion>526BDA74-7A81-44C3-B0FD-9DBF80973C25</FormatVersion>
+<Source>RHI</Source>
+<Queue>
+<Name>Graphics Queue 0</Name>
+<FullHash>5ABA8AB05CBC274C728E984BC9FDD3E41351819B</FullHash>
+<ActiveHash>BB5CF41E431131320A011C62A9ACC10F4B82DB56</ActiveHash>
+<Breadcrumbs>{{Frame 17869},A,{{{SceneRender - ViewFamilies},F,{{{RenderGraphExecute - /ViewFamilies},F,{{{Scene},F,{{{VirtualTextureUpdate},F},{{Submit Lumen surface cache feedback},F}}}}}}},{{RenderGraphExecute - Slate},A,{{{SlateUI Title = AI_CHAT_Plugin (64-bit Development PCD3D_SM6) },A,{{{DrawDebugCanvas},A,{{{CanvasFlush},A}}}}}}}}}{{BufferPoolCopyOps},N}{{TexturePoolCopyOps},N}{{Frame 17870},N,{{{WorldTick},N},{{SendAllEndOfFrameUpdates},N},{{SceneRender - ViewFamilies},N,{{{RayTracingGeometry},N},{{GPUSkinCache_UpdateSkinningBatches},N,{{{Skinning0000 Mesh=SKM_MannyXR_left LOD=0 Chunk=0 InStreamStart=0 OutStart=0 Vert=3239 Morph=0/0},N},{{Skinning0000 Mesh=SKM_MannyXR_right LOD=0 Chunk=0 InStreamStart=0 OutStart=0 Vert=3239 Morph=0/0},N}}},{{ScaleVariableRateShadingTexture},N},{{UpdateLumenSceneBuffers},N},{{RenderGraphExecute - /ViewFamilies},N,{{{UpdateAllPrimitiveSceneInfos},N},{{UpdateDistanceFieldAtlas},N},{{Scene},N,{{{FXSystemPreRender},N,{{{GPUParticles_PreRender},N}}},{{GPUSceneUpdate},N},{{BuildRenderingCommandsDeferred(Culling=On)},N},{{PrePass DDM_AllOpaqueNoVelocity (Forced by Nanite)},N},{{RenderVelocities},N,{{{ParallelDraw (Index: 0, Num: 1)},N}}},{{HZB},N,{{{BeginOcclusionTests},N,{{{BeginOcclusionTests},N,{{{ViewOcclusionTests 0},N,{{{ShadowFrustumQueries},N},{{GroupedQueries},N},{{IndividualQueries},N}}}}}}}}},{{HZB},N,{{{BuildHZB(ViewId=0)},N,{{{BuildHZB},N}}}}},{{ComputeLightGrid},N,{{{CullLights 22x13x32 NumLights 0 NumCaptures 0},N}}},{{LightFunctionAtlasGeneration},N},{{LumenSceneUpdate: 2 card captures 0.000M texels},N,{{{BuildRenderingCommands(Culling=Off)},N},{{MeshCardCapture Pages:2 Draws:2 Instances:2 Tris:11636},N},{{MeshCardCapture Pages:2 Draws:2 Instances:2 Tris:11636},N},{{CopyCardsToSurfaceCache},N}}},{{RayTracingDynamicGeometry},N,{{{Build},N}}},{{RayTracingScene},N},{{LumenSceneLighting},N,{{{DirectLighting},N,{{{Light Attenuation ShadowMask},N}}}}},{{BasePass},N,{{{ParallelDraw (Index: 0, Num: 1)},N},{{EditorPrimitives},N}}},{{RenderAnisotropyPass},N,{{{ParallelDraw (Index: 0, Num: 1)},N}}},{{DiffuseIndirectAndAO},N,{{{LumenScreenProbeGather},N,{{{UpdateRadianceCaches},N}}}}},{{RenderDeferredLighting},N,{{{DiffuseIndirectAndAO},N,{{{LumenReflections},N}}},{{DiffuseIndirectAndAO},N}}},{{TemporalSuperResolution},N},{{PostRenderOpsFX},N,{{{FXSystemPostRenderOpaque},N,{{{GPUParticles_PostRenderOpaque},N}}}}},{{Translucency},N,{{{RenderTranslucency},N}}},{{PostProcessing},N,{{{TemporalSuperResolution(sg.AntiAliasingQuality=3) 1400x788 -&gt; 1920x1080},N},{{MotionBlur},N,{{{MotionBlur FullResFilter(BlurDirections=1 MaxSamples=16 OutputMip1) 1920x1080},N}}},{{LocalExposure},N},{{Histogram},N},{{TextureDownsampleChain},N},{{LocalExposure - Blurred Luminance},N},{{TextureDownsampleChain},N},{{Bloom},N}}},{{VirtualTextureUpdate},N},{{Submit Lumen surface cache feedback},N}}}}}}},{{RenderGraphExecute - Slate},N,{{{SlateUI Title = AI_CHAT_Plugin (64-bit Development PCD3D_SM6) },N,{{{DrawDebugCanvas},N,{{{CanvasFlush},N}}}}}}}}}</Breadcrumbs>
+</Queue>
+<Queue>
+<Name>AsyncCompute Queue 0</Name>
+<FullHash>514A69D56697288A4C8379A01E4A0A8D4343DDB1</FullHash>
+<ActiveHash>0793F3E640745082A26564857226B69CD1919A22</ActiveHash>
+<Breadcrumbs>{{Frame 17869},F,{{{RenderGraphExecute - Slate},F}}}{{BufferPoolCopyOps},F}{{TexturePoolCopyOps},A}{{Frame 17870},A,{{{SceneRender - ViewFamilies},A,{{{RenderGraphExecute - /ViewFamilies},N,{{{Scene},N,{{{FXSystemPreRender},N},{{PrepareImageBasedVRS},N,{{{ContrastAdaptiveShading},N}}},{{LumenSceneLighting},N,{{{BuildCardUpdateContext},N},{{DirectLighting},N,{{{CullTiles 0 lights},N},{{Offscreen shadows},N},{{Lights},N}}},{{Radiosity},N}}},{{DiffuseIndirectAndAO},N,{{{LumenScreenProbeGather},N,{{{UpdateRadianceCaches},N},{{Integrate},N}}},{{TranslucencyVolumeLighting},N}}},{{PostProcessing},N,{{{TemporalSuperResolution(sg.AntiAliasingQuality=3) 1400x788 -&gt; 1920x1080},N}}}}}}}}},{{RenderGraphExecute - Slate},N}}}</Breadcrumbs>
+</Queue>
+</GPUBreadcrumbs>
+<Threads><Thread><CallStack>AI_CHAT_Plugin  0x00007ff6faf40000 + 1a0b8ee         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 161e479         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 17672fc         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a2a374         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 64d36f2         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 64c94d8         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 64fdf00         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 64f96ee         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 9ad926e         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 9aea01c         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 9aea0fa         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 9aecf28         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 9afa524         
+AI_CHAT_Plugin  0x00007ff6faf40000 + e86b27a         
+KERNEL32        0x00007ff9b7390000 + 2e8d7           
+ntdll           0x00007ff9b78e0000 + 8c53c           
+</CallStack>
+<IsCrashed>false</IsCrashed>
+<Registers></Registers>
+<ThreadID>23968</ThreadID>
+<ThreadName>GameThread</ThreadName>
+</Thread>
+<Thread><CallStack>ntdll           0x00007ff9b78e0000 + 161c44          
+KERNELBASE      0x00007ff9b4d20000 + 3bc5f           
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a31463         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1642d90         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1aa1968         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a9a5ff         
+KERNEL32        0x00007ff9b7390000 + 2e8d7           
+</CallStack>
+<IsCrashed>false</IsCrashed>
+<Registers></Registers>
+<ThreadID>19684</ThreadID>
+<ThreadName>BackgroundThreadPool #0</ThreadName>
+</Thread>
+<Thread><CallStack>ntdll           0x00007ff9b78e0000 + 161c44          
+KERNELBASE      0x00007ff9b4d20000 + 3bc5f           
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a31463         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1642d90         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1aa1968         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a9a5ff         
+KERNEL32        0x00007ff9b7390000 + 2e8d7           
+</CallStack>
+<IsCrashed>false</IsCrashed>
+<Registers></Registers>
+<ThreadID>30000</ThreadID>
+<ThreadName>BackgroundThreadPool #1</ThreadName>
+</Thread>
+<Thread><CallStack>ntdll           0x00007ff9b78e0000 + 161c44          
+KERNELBASE      0x00007ff9b4d20000 + 3bc5f           
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a31463         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 14407d5         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1471149         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1434f6a         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 16430b3         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1aa1968         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a9a5ff         
+KERNEL32        0x00007ff9b7390000 + 2e8d7           
+</CallStack>
+<IsCrashed>false</IsCrashed>
+<Registers></Registers>
+<ThreadID>17272</ThreadID>
+<ThreadName>Foreground Worker #0</ThreadName>
+</Thread>
+<Thread><CallStack>ntdll           0x00007ff9b78e0000 + 161c44          
+KERNELBASE      0x00007ff9b4d20000 + 3bc5f           
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a31463         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 14407d5         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1471149         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1434f6a         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 16430b3         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1aa1968         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a9a5ff         
+KERNEL32        0x00007ff9b7390000 + 2e8d7           
+</CallStack>
+<IsCrashed>false</IsCrashed>
+<Registers></Registers>
+<ThreadID>9172</ThreadID>
+<ThreadName>Foreground Worker #1</ThreadName>
+</Thread>
+<Thread><CallStack>ntdll           0x00007ff9b78e0000 + 161c44          
+KERNELBASE      0x00007ff9b4d20000 + 3bc5f           
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a31463         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 14407d5         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1471149         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1434f6a         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 16430b3         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1aa1968         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a9a5ff         
+KERNEL32        0x00007ff9b7390000 + 2e8d7           
+</CallStack>
+<IsCrashed>false</IsCrashed>
+<Registers></Registers>
+<ThreadID>30616</ThreadID>
+<ThreadName>Background Worker #0</ThreadName>
+</Thread>
+<Thread><CallStack>ntdll           0x00007ff9b78e0000 + 161c44          
+KERNELBASE      0x00007ff9b4d20000 + 3bc5f           
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a31463         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 14407d5         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1471149         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1434f6a         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 16430b3         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1aa1968         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a9a5ff         
+KERNEL32        0x00007ff9b7390000 + 2e8d7           
+</CallStack>
+<IsCrashed>false</IsCrashed>
+<Registers></Registers>
+<ThreadID>27752</ThreadID>
+<ThreadName>Background Worker #1</ThreadName>
+</Thread>
+<Thread><CallStack>ntdll           0x00007ff9b78e0000 + 161c44          
+KERNELBASE      0x00007ff9b4d20000 + 3bc5f           
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a31463         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1441cd7         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 14674a7         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1434f63         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 16430b3         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1aa1968         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a9a5ff         
+KERNEL32        0x00007ff9b7390000 + 2e8d7           
+</CallStack>
+<IsCrashed>false</IsCrashed>
+<Registers></Registers>
+<ThreadID>12532</ThreadID>
+<ThreadName>Foreground Worker (Standby #0)</ThreadName>
+</Thread>
+<Thread><CallStack>ntdll           0x00007ff9b78e0000 + 162244          
+ntdll           0x00007ff9b78e0000 + cee84           
+KERNELBASE      0x00007ff9b4d20000 + 479a1           
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1643015         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1aa1968         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a9a5ff         
+KERNEL32        0x00007ff9b7390000 + 2e8d7           
+</CallStack>
+<IsCrashed>false</IsCrashed>
+<Registers></Registers>
+<ThreadID>25764</ThreadID>
+<ThreadName>FHeartBeatThread</ThreadName>
+</Thread>
+<Thread><CallStack>ntdll           0x00007ff9b78e0000 + 162244          
+ntdll           0x00007ff9b78e0000 + cee84           
+KERNELBASE      0x00007ff9b4d20000 + 479a1           
+AI_CHAT_Plugin  0x00007ff6faf40000 + 184c062         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1aa1968         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a9a5ff         
+KERNEL32        0x00007ff9b7390000 + 2e8d7           
+</CallStack>
+<IsCrashed>false</IsCrashed>
+<Registers></Registers>
+<ThreadID>26520</ThreadID>
+<ThreadName>FAsyncWriter_AI_CHAT_Plugin</ThreadName>
+</Thread>
+<Thread><CallStack>ntdll           0x00007ff9b78e0000 + 161c44          
+KERNELBASE      0x00007ff9b4d20000 + 3bc5f           
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a31463         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 7478091         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1aa1968         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a9a5ff         
+KERNEL32        0x00007ff9b7390000 + 2e8d7           
+</CallStack>
+<IsCrashed>false</IsCrashed>
+<Registers></Registers>
+<ThreadID>25804</ThreadID>
+<ThreadName>FMediaTicker</ThreadName>
+</Thread>
+<Thread><CallStack>ntdll           0x00007ff9b78e0000 + 162714          
+KERNELBASE      0x00007ff9b4d20000 + 42533           
+AI_CHAT_Plugin  0x00007ff6faf40000 + e542fd4         
+AI_CHAT_Plugin  0x00007ff6faf40000 + e540a3d         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 333ae97         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 3347844         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 33443bb         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 3344e96         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1aa1968         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a9a5ff         
+KERNEL32        0x00007ff9b7390000 + 2e8d7           
+</CallStack>
+<IsCrashed>false</IsCrashed>
+<Registers></Registers>
+<ThreadID>27068</ThreadID>
+<ThreadName>HttpManagerThread</ThreadName>
+</Thread>
+<Thread><CallStack>ntdll           0x00007ff9b78e0000 + 161c44          
+KERNELBASE      0x00007ff9b4d20000 + 3bc5f           
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a31463         
+AI_CHAT_Plugin  0x00007ff6faf40000 + ce58b86         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1aa1968         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a9a5ff         
+KERNEL32        0x00007ff9b7390000 + 2e8d7           
+</CallStack>
+<IsCrashed>false</IsCrashed>
+<Registers></Registers>
+<ThreadID>13256</ThreadID>
+<ThreadName>OnlineAsyncTaskThreadNull DefaultInstance(1)</ThreadName>
+</Thread>
+<Thread><CallStack>ntdll           0x00007ff9b78e0000 + 165814          
+ntdll           0x00007ff9b78e0000 + 9c1c3           
+KERNELBASE      0x00007ff9b4d20000 + e1098           
+AI_CHAT_Plugin  0x00007ff6faf40000 + 178272c         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 146fd9e         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 146f5fc         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1853252         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 16430b3         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1aa1968         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a9a5ff         
+KERNEL32        0x00007ff9b7390000 + 2e8d7           
+</CallStack>
+<IsCrashed>false</IsCrashed>
+<Registers></Registers>
+<ThreadID>24168</ThreadID>
+<ThreadName>OutputDeviceRedirector</ThreadName>
+</Thread>
+<Thread><CallStack>ntdll           0x00007ff9b78e0000 + 161c44          
+KERNELBASE      0x00007ff9b4d20000 + 3bc5f           
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a31463         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1642d90         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1aa1968         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a9a5ff         
+KERNEL32        0x00007ff9b7390000 + 2e8d7           
+</CallStack>
+<IsCrashed>false</IsCrashed>
+<Registers></Registers>
+<ThreadID>26328</ThreadID>
+<ThreadName>IOThreadPool #0</ThreadName>
+</Thread>
+<Thread><CallStack>ntdll           0x00007ff9b78e0000 + 161c44          
+KERNELBASE      0x00007ff9b4d20000 + 3bc5f           
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a31463         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1642d90         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1aa1968         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a9a5ff         
+KERNEL32        0x00007ff9b7390000 + 2e8d7           
+</CallStack>
+<IsCrashed>false</IsCrashed>
+<Registers></Registers>
+<ThreadID>22544</ThreadID>
+<ThreadName>IOThreadPool #1</ThreadName>
+</Thread>
+<Thread><CallStack>ntdll           0x00007ff9b78e0000 + 161c44          
+KERNELBASE      0x00007ff9b4d20000 + 3bc5f           
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a31463         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1642d90         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1aa1968         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a9a5ff         
+KERNEL32        0x00007ff9b7390000 + 2e8d7           
+</CallStack>
+<IsCrashed>false</IsCrashed>
+<Registers></Registers>
+<ThreadID>20976</ThreadID>
+<ThreadName>IOThreadPool #2</ThreadName>
+</Thread>
+<Thread><CallStack>ntdll           0x00007ff9b78e0000 + 161c44          
+KERNELBASE      0x00007ff9b4d20000 + 3bc5f           
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a31463         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1642d90         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1aa1968         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a9a5ff         
+KERNEL32        0x00007ff9b7390000 + 2e8d7           
+</CallStack>
+<IsCrashed>false</IsCrashed>
+<Registers></Registers>
+<ThreadID>28100</ThreadID>
+<ThreadName>IOThreadPool #3</ThreadName>
+</Thread>
+<Thread><CallStack>ntdll           0x00007ff9b78e0000 + 161c44          
+KERNELBASE      0x00007ff9b4d20000 + 3bc5f           
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a31463         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 49ea361         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1aa1968         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a9a5ff         
+KERNEL32        0x00007ff9b7390000 + 2e8d7           
+</CallStack>
+<IsCrashed>false</IsCrashed>
+<Registers></Registers>
+<ThreadID>21528</ThreadID>
+<ThreadName>IoService</ThreadName>
+</Thread>
+<Thread><CallStack>ntdll           0x00007ff9b78e0000 + 161c44          
+KERNELBASE      0x00007ff9b4d20000 + 3bc5f           
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a31463         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1741b0e         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1aa1968         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a9a5ff         
+KERNEL32        0x00007ff9b7390000 + 2e8d7           
+</CallStack>
+<IsCrashed>false</IsCrashed>
+<Registers></Registers>
+<ThreadID>580</ThreadID>
+<ThreadName>IoDispatcher</ThreadName>
+</Thread>
+<Thread><CallStack>win32u          0x00007ff9b4cf0000 + 1324            
+USER32          0x00007ff9b61e0000 + 3f402           
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a2da03         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a2dc9b         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a21c0d         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 610a944         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 6094f7d         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 60b1749         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 60b8a96         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 60c7f7f         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1aa1968         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a9a5ff         
+KERNEL32        0x00007ff9b7390000 + 2e8d7           
+</CallStack>
+<IsCrashed>false</IsCrashed>
+<Registers></Registers>
+<ThreadID>29032</ThreadID>
+<ThreadName>RHIInterruptThread</ThreadName>
+</Thread>
+<Thread><CallStack>ntdll           0x00007ff9b78e0000 + 161c44          
+KERNELBASE      0x00007ff9b4d20000 + 3bc5f           
+AI_CHAT_Plugin  0x00007ff6faf40000 + 60c7f95         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1aa1968         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a9a5ff         
+KERNEL32        0x00007ff9b7390000 + 2e8d7           
+</CallStack>
+<IsCrashed>false</IsCrashed>
+<Registers></Registers>
+<ThreadID>20124</ThreadID>
+<ThreadName>RHISubmissionThread</ThreadName>
+</Thread>
+<Thread><CallStack>ntdll           0x00007ff9b78e0000 + 161c44          
+KERNELBASE      0x00007ff9b4d20000 + 3bc5f           
+AI_CHAT_Plugin  0x00007ff6faf40000 + 60fa9ae         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 610d2da         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 6100a72         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 610040a         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 6102bce         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 631d400         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 631b2a1         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 63488be         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 6304626         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 631cc61         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a95cc6         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 146d503         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 14603f9         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 146094e         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 64e4a13         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1aa1968         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a9a5ff         
+KERNEL32        0x00007ff9b7390000 + 2e8d7           
+</CallStack>
+<IsCrashed>false</IsCrashed>
+<Registers></Registers>
+<ThreadID>21772</ThreadID>
+<ThreadName>RHIThread</ThreadName>
+</Thread>
+<Thread><CallStack>ntdll           0x00007ff9b78e0000 + 161c44          
+KERNELBASE      0x00007ff9b4d20000 + 3bc5f           
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a31463         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1460048         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 146094e         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 146fa17         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 14701a3         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1b1ba5d         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 635145f         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 5aaa7d8         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 5b02b83         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 5b02005         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 5a5ada2         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 5a265ca         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 5a8f29d         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 4bea0d8         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 5a98ddb         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 5a3d100         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 5a60b3e         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 64a5b11         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 64c4177         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 146d503         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 14603f9         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 146094e         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 64e41fc         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 64e4b19         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1aa1968         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a9a5ff         
+KERNEL32        0x00007ff9b7390000 + 2e8d7           
+</CallStack>
+<IsCrashed>true</IsCrashed>
+<Registers></Registers>
+<ThreadID>15808</ThreadID>
+<ThreadName>RenderThread 0</ThreadName>
+</Thread>
+<Thread><CallStack>ntdll           0x00007ff9b78e0000 + 162244          
+ntdll           0x00007ff9b78e0000 + cee84           
+KERNELBASE      0x00007ff9b4d20000 + 479a1           
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a2e2c2         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 64e4c37         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1aa1968         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a9a5ff         
+KERNEL32        0x00007ff9b7390000 + 2e8d7           
+</CallStack>
+<IsCrashed>false</IsCrashed>
+<Registers></Registers>
+<ThreadID>25076</ThreadID>
+<ThreadName>RTHeartBeat 0</ThreadName>
+</Thread>
+<Thread><CallStack>ntdll           0x00007ff9b78e0000 + 161c44          
+KERNELBASE      0x00007ff9b4d20000 + 3bc5f           
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a31463         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 14407d5         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1471149         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1434f6a         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 16430b3         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1aa1968         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a9a5ff         
+KERNEL32        0x00007ff9b7390000 + 2e8d7           
+</CallStack>
+<IsCrashed>false</IsCrashed>
+<Registers></Registers>
+<ThreadID>24180</ThreadID>
+<ThreadName>Background Worker #2</ThreadName>
+</Thread>
+<Thread><CallStack>ntdll           0x00007ff9b78e0000 + 161c44          
+KERNELBASE      0x00007ff9b4d20000 + 3bc5f           
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a31463         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 14407d5         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1471149         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1434f6a         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 16430b3         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1aa1968         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a9a5ff         
+KERNEL32        0x00007ff9b7390000 + 2e8d7           
+</CallStack>
+<IsCrashed>false</IsCrashed>
+<Registers></Registers>
+<ThreadID>25080</ThreadID>
+<ThreadName>Background Worker #3</ThreadName>
+</Thread>
+<Thread><CallStack>ntdll           0x00007ff9b78e0000 + 161c44          
+KERNELBASE      0x00007ff9b4d20000 + 3bc5f           
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a31463         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 14407d5         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1471149         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1434f6a         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 16430b3         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1aa1968         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a9a5ff         
+KERNEL32        0x00007ff9b7390000 + 2e8d7           
+</CallStack>
+<IsCrashed>false</IsCrashed>
+<Registers></Registers>
+<ThreadID>22444</ThreadID>
+<ThreadName>Background Worker #4</ThreadName>
+</Thread>
+<Thread><CallStack>ntdll           0x00007ff9b78e0000 + 161c44          
+KERNELBASE      0x00007ff9b4d20000 + 3bc5f           
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a31463         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 14407d5         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1471149         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1434f6a         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 16430b3         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1aa1968         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a9a5ff         
+KERNEL32        0x00007ff9b7390000 + 2e8d7           
+</CallStack>
+<IsCrashed>false</IsCrashed>
+<Registers></Registers>
+<ThreadID>11404</ThreadID>
+<ThreadName>Background Worker #5</ThreadName>
+</Thread>
+<Thread><CallStack>ntdll           0x00007ff9b78e0000 + 161c44          
+KERNELBASE      0x00007ff9b4d20000 + 3bc5f           
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a31463         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 14407d5         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1471149         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1434f6a         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 16430b3         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1aa1968         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a9a5ff         
+KERNEL32        0x00007ff9b7390000 + 2e8d7           
+</CallStack>
+<IsCrashed>false</IsCrashed>
+<Registers></Registers>
+<ThreadID>25404</ThreadID>
+<ThreadName>Background Worker #6</ThreadName>
+</Thread>
+<Thread><CallStack>ntdll           0x00007ff9b78e0000 + 161c44          
+KERNELBASE      0x00007ff9b4d20000 + 3bc5f           
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a31463         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 14407d5         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1471149         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1434f6a         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 16430b3         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1aa1968         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a9a5ff         
+KERNEL32        0x00007ff9b7390000 + 2e8d7           
+</CallStack>
+<IsCrashed>false</IsCrashed>
+<Registers></Registers>
+<ThreadID>5304</ThreadID>
+<ThreadName>Background Worker #7</ThreadName>
+</Thread>
+<Thread><CallStack>ntdll           0x00007ff9b78e0000 + 161c44          
+KERNELBASE      0x00007ff9b4d20000 + 3bc5f           
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a31463         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 14407d5         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1471149         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1434f6a         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 16430b3         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1aa1968         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a9a5ff         
+KERNEL32        0x00007ff9b7390000 + 2e8d7           
+</CallStack>
+<IsCrashed>false</IsCrashed>
+<Registers></Registers>
+<ThreadID>27104</ThreadID>
+<ThreadName>Background Worker #8</ThreadName>
+</Thread>
+<Thread><CallStack>ntdll           0x00007ff9b78e0000 + 161c44          
+KERNELBASE      0x00007ff9b4d20000 + 3bc5f           
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a31463         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 14407d5         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1471149         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1434f6a         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 16430b3         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1aa1968         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a9a5ff         
+KERNEL32        0x00007ff9b7390000 + 2e8d7           
+</CallStack>
+<IsCrashed>false</IsCrashed>
+<Registers></Registers>
+<ThreadID>28316</ThreadID>
+<ThreadName>Background Worker #9</ThreadName>
+</Thread>
+<Thread><CallStack>ntdll           0x00007ff9b78e0000 + 161c44          
+KERNELBASE      0x00007ff9b4d20000 + 3bc5f           
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a31463         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 14407d5         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1471149         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1434f6a         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 16430b3         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1aa1968         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a9a5ff         
+KERNEL32        0x00007ff9b7390000 + 2e8d7           
+</CallStack>
+<IsCrashed>false</IsCrashed>
+<Registers></Registers>
+<ThreadID>25964</ThreadID>
+<ThreadName>Background Worker #10</ThreadName>
+</Thread>
+<Thread><CallStack>ntdll           0x00007ff9b78e0000 + 161c44          
+KERNELBASE      0x00007ff9b4d20000 + 3bc5f           
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a31463         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 14407d5         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1471149         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1434f6a         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 16430b3         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1aa1968         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a9a5ff         
+KERNEL32        0x00007ff9b7390000 + 2e8d7           
+</CallStack>
+<IsCrashed>false</IsCrashed>
+<Registers></Registers>
+<ThreadID>9004</ThreadID>
+<ThreadName>Background Worker #11</ThreadName>
+</Thread>
+<Thread><CallStack>ntdll           0x00007ff9b78e0000 + 161c44          
+KERNELBASE      0x00007ff9b4d20000 + 3bc5f           
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a31463         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 14407d5         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1471149         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1434f6a         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 16430b3         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1aa1968         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a9a5ff         
+KERNEL32        0x00007ff9b7390000 + 2e8d7           
+</CallStack>
+<IsCrashed>false</IsCrashed>
+<Registers></Registers>
+<ThreadID>6880</ThreadID>
+<ThreadName>Background Worker #12</ThreadName>
+</Thread>
+<Thread><CallStack>ntdll           0x00007ff9b78e0000 + 161c44          
+KERNELBASE      0x00007ff9b4d20000 + 3bc5f           
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a31463         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 14407d5         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1471149         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1434f6a         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 16430b3         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1aa1968         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a9a5ff         
+KERNEL32        0x00007ff9b7390000 + 2e8d7           
+</CallStack>
+<IsCrashed>false</IsCrashed>
+<Registers></Registers>
+<ThreadID>17744</ThreadID>
+<ThreadName>Background Worker #13</ThreadName>
+</Thread>
+<Thread><CallStack>ntdll           0x00007ff9b78e0000 + 161c44          
+KERNELBASE      0x00007ff9b4d20000 + 3bc5f           
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a31463         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 14407d5         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1471149         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1434f6a         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 16430b3         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1aa1968         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a9a5ff         
+KERNEL32        0x00007ff9b7390000 + 2e8d7           
+</CallStack>
+<IsCrashed>false</IsCrashed>
+<Registers></Registers>
+<ThreadID>27276</ThreadID>
+<ThreadName>Background Worker #14</ThreadName>
+</Thread>
+<Thread><CallStack>ntdll           0x00007ff9b78e0000 + 161c44          
+KERNELBASE      0x00007ff9b4d20000 + 3bc5f           
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a31463         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 14407d5         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1471149         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1434f6a         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 16430b3         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1aa1968         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a9a5ff         
+KERNEL32        0x00007ff9b7390000 + 2e8d7           
+</CallStack>
+<IsCrashed>false</IsCrashed>
+<Registers></Registers>
+<ThreadID>10236</ThreadID>
+<ThreadName>Background Worker #15</ThreadName>
+</Thread>
+<Thread><CallStack>ntdll           0x00007ff9b78e0000 + 161c44          
+KERNELBASE      0x00007ff9b4d20000 + 3bc5f           
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a31463         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1642d90         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1aa1968         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a9a5ff         
+KERNEL32        0x00007ff9b7390000 + 2e8d7           
+</CallStack>
+<IsCrashed>false</IsCrashed>
+<Registers></Registers>
+<ThreadID>30448</ThreadID>
+<ThreadName>PSOPrecompilePool #0</ThreadName>
+</Thread>
+<Thread><CallStack>ntdll           0x00007ff9b78e0000 + 161c44          
+KERNELBASE      0x00007ff9b4d20000 + 3bc5f           
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a31463         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1441cd7         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 14674a7         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1434f63         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 16430b3         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1aa1968         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a9a5ff         
+KERNEL32        0x00007ff9b7390000 + 2e8d7           
+</CallStack>
+<IsCrashed>false</IsCrashed>
+<Registers></Registers>
+<ThreadID>17080</ThreadID>
+<ThreadName>Background Worker (Standby #0)</ThreadName>
+</Thread>
+<Thread><CallStack>ntdll           0x00007ff9b78e0000 + 161c44          
+KERNELBASE      0x00007ff9b4d20000 + 3bc5f           
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a31463         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1642d90         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1aa1968         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a9a5ff         
+KERNEL32        0x00007ff9b7390000 + 2e8d7           
+</CallStack>
+<IsCrashed>false</IsCrashed>
+<Registers></Registers>
+<ThreadID>23876</ThreadID>
+<ThreadName>PSOPrecompilePool #1</ThreadName>
+</Thread>
+<Thread><CallStack>ntdll           0x00007ff9b78e0000 + 161c44          
+KERNELBASE      0x00007ff9b4d20000 + 3bc5f           
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a31463         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1642d90         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1aa1968         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a9a5ff         
+KERNEL32        0x00007ff9b7390000 + 2e8d7           
+</CallStack>
+<IsCrashed>false</IsCrashed>
+<Registers></Registers>
+<ThreadID>21036</ThreadID>
+<ThreadName>PSOPrecompilePool #2</ThreadName>
+</Thread>
+<Thread><CallStack>ntdll           0x00007ff9b78e0000 + 161c44          
+KERNELBASE      0x00007ff9b4d20000 + 3bc5f           
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a31463         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1642d90         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1aa1968         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a9a5ff         
+KERNEL32        0x00007ff9b7390000 + 2e8d7           
+</CallStack>
+<IsCrashed>false</IsCrashed>
+<Registers></Registers>
+<ThreadID>24028</ThreadID>
+<ThreadName>PSOPrecompilePool #3</ThreadName>
+</Thread>
+<Thread><CallStack>ntdll           0x00007ff9b78e0000 + 161c44          
+KERNELBASE      0x00007ff9b4d20000 + 3bc5f           
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a31463         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1642d90         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1aa1968         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a9a5ff         
+KERNEL32        0x00007ff9b7390000 + 2e8d7           
+</CallStack>
+<IsCrashed>false</IsCrashed>
+<Registers></Registers>
+<ThreadID>10768</ThreadID>
+<ThreadName>PSOPrecompilePool #4</ThreadName>
+</Thread>
+<Thread><CallStack>ntdll           0x00007ff9b78e0000 + 161c44          
+KERNELBASE      0x00007ff9b4d20000 + 3bc5f           
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a31463         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1642d90         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1aa1968         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a9a5ff         
+KERNEL32        0x00007ff9b7390000 + 2e8d7           
+</CallStack>
+<IsCrashed>false</IsCrashed>
+<Registers></Registers>
+<ThreadID>28032</ThreadID>
+<ThreadName>PSOPrecompilePool #5</ThreadName>
+</Thread>
+<Thread><CallStack>ntdll           0x00007ff9b78e0000 + 161c44          
+KERNELBASE      0x00007ff9b4d20000 + 3bc5f           
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a31463         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1642d90         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1aa1968         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a9a5ff         
+KERNEL32        0x00007ff9b7390000 + 2e8d7           
+</CallStack>
+<IsCrashed>false</IsCrashed>
+<Registers></Registers>
+<ThreadID>5664</ThreadID>
+<ThreadName>PSOPrecompilePool #6</ThreadName>
+</Thread>
+<Thread><CallStack>ntdll           0x00007ff9b78e0000 + 161c44          
+KERNELBASE      0x00007ff9b4d20000 + 3bc5f           
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a31463         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1642d90         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1aa1968         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a9a5ff         
+KERNEL32        0x00007ff9b7390000 + 2e8d7           
+</CallStack>
+<IsCrashed>false</IsCrashed>
+<Registers></Registers>
+<ThreadID>27400</ThreadID>
+<ThreadName>PSOPrecompilePool #7</ThreadName>
+</Thread>
+<Thread><CallStack>ntdll           0x00007ff9b78e0000 + 161c44          
+KERNELBASE      0x00007ff9b4d20000 + 3bc5f           
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a31463         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1642d90         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1aa1968         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a9a5ff         
+KERNEL32        0x00007ff9b7390000 + 2e8d7           
+</CallStack>
+<IsCrashed>false</IsCrashed>
+<Registers></Registers>
+<ThreadID>4720</ThreadID>
+<ThreadName>PSOPrecompilePool #8</ThreadName>
+</Thread>
+<Thread><CallStack>ntdll           0x00007ff9b78e0000 + 161c44          
+KERNELBASE      0x00007ff9b4d20000 + 3bc5f           
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a31463         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1642d90         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1aa1968         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a9a5ff         
+KERNEL32        0x00007ff9b7390000 + 2e8d7           
+</CallStack>
+<IsCrashed>false</IsCrashed>
+<Registers></Registers>
+<ThreadID>28420</ThreadID>
+<ThreadName>PSOPrecompilePool #9</ThreadName>
+</Thread>
+<Thread><CallStack>ntdll           0x00007ff9b78e0000 + 161c44          
+KERNELBASE      0x00007ff9b4d20000 + 3bc5f           
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a31463         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1642d90         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1aa1968         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a9a5ff         
+KERNEL32        0x00007ff9b7390000 + 2e8d7           
+</CallStack>
+<IsCrashed>false</IsCrashed>
+<Registers></Registers>
+<ThreadID>10092</ThreadID>
+<ThreadName>PSOPrecompilePool #10</ThreadName>
+</Thread>
+<Thread><CallStack>ntdll           0x00007ff9b78e0000 + 161c44          
+KERNELBASE      0x00007ff9b4d20000 + 3bc5f           
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a31463         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1642d90         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1aa1968         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a9a5ff         
+KERNEL32        0x00007ff9b7390000 + 2e8d7           
+</CallStack>
+<IsCrashed>false</IsCrashed>
+<Registers></Registers>
+<ThreadID>23332</ThreadID>
+<ThreadName>PSOPrecompilePool #11</ThreadName>
+</Thread>
+<Thread><CallStack>ntdll           0x00007ff9b78e0000 + 161c44          
+KERNELBASE      0x00007ff9b4d20000 + 3bc5f           
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a31463         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1642d90         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1aa1968         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a9a5ff         
+KERNEL32        0x00007ff9b7390000 + 2e8d7           
+</CallStack>
+<IsCrashed>false</IsCrashed>
+<Registers></Registers>
+<ThreadID>23180</ThreadID>
+<ThreadName>PSOPrecompilePool #12</ThreadName>
+</Thread>
+<Thread><CallStack>ntdll           0x00007ff9b78e0000 + 161c44          
+KERNELBASE      0x00007ff9b4d20000 + 3bc5f           
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a31463         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1642d90         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1aa1968         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a9a5ff         
+KERNEL32        0x00007ff9b7390000 + 2e8d7           
+</CallStack>
+<IsCrashed>false</IsCrashed>
+<Registers></Registers>
+<ThreadID>10128</ThreadID>
+<ThreadName>PSOPrecompilePool #13</ThreadName>
+</Thread>
+<Thread><CallStack>ntdll           0x00007ff9b78e0000 + 161c44          
+KERNELBASE      0x00007ff9b4d20000 + 3bc5f           
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a31463         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1642d90         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1aa1968         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a9a5ff         
+KERNEL32        0x00007ff9b7390000 + 2e8d7           
+</CallStack>
+<IsCrashed>false</IsCrashed>
+<Registers></Registers>
+<ThreadID>6656</ThreadID>
+<ThreadName>PSOPrecompilePool #14</ThreadName>
+</Thread>
+<Thread><CallStack>ntdll           0x00007ff9b78e0000 + 161c44          
+KERNELBASE      0x00007ff9b4d20000 + 3bc5f           
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a31463         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 2e1568f         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1aa1968         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a9a5ff         
+KERNEL32        0x00007ff9b7390000 + 2e8d7           
+</CallStack>
+<IsCrashed>false</IsCrashed>
+<Registers></Registers>
+<ThreadID>10184</ThreadID>
+<ThreadName>FMessageBus.DefaultBus.Router</ThreadName>
+</Thread>
+<Thread><CallStack>ntdll           0x00007ff9b78e0000 + 161c44          
+KERNELBASE      0x00007ff9b4d20000 + 3bc5f           
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a31463         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 9df9ff9         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1aa1968         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a9a5ff         
+KERNEL32        0x00007ff9b7390000 + 2e8d7           
+</CallStack>
+<IsCrashed>false</IsCrashed>
+<Registers></Registers>
+<ThreadID>14732</ThreadID>
+<ThreadName>LiveLinkMessageBusDiscoveryManager</ThreadName>
+</Thread>
+<Thread><CallStack>ntdll           0x00007ff9b78e0000 + 161c44          
+KERNELBASE      0x00007ff9b4d20000 + 3bc5f           
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a31463         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1f24ba1         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1f24b64         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 23509d4         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1aa1968         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a9a5ff         
+KERNEL32        0x00007ff9b7390000 + 2e8d7           
+</CallStack>
+<IsCrashed>false</IsCrashed>
+<Registers></Registers>
+<ThreadID>24604</ThreadID>
+<ThreadName>FAsyncLoadingThread</ThreadName>
+</Thread>
+<Thread><CallStack>ntdll           0x00007ff9b78e0000 + 162244          
+ntdll           0x00007ff9b78e0000 + cee84           
+KERNELBASE      0x00007ff9b4d20000 + 479a1           
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a2e2c2         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 9866fe5         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1aa1968         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a9a5ff         
+KERNEL32        0x00007ff9b7390000 + 2e8d7           
+</CallStack>
+<IsCrashed>false</IsCrashed>
+<Registers></Registers>
+<ThreadID>12980</ThreadID>
+<ThreadName>ScreenSaverInhibitor</ThreadName>
+</Thread>
+<Thread><CallStack>ntdll           0x00007ff9b78e0000 + 161c44          
+KERNELBASE      0x00007ff9b4d20000 + 3bc5f           
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a31463         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 488722e         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1aa1968         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a9a5ff         
+KERNEL32        0x00007ff9b7390000 + 2e8d7           
+</CallStack>
+<IsCrashed>false</IsCrashed>
+<Registers></Registers>
+<ThreadID>23376</ThreadID>
+<ThreadName>AudioMixerNullCallbackThread</ThreadName>
+</Thread>
+<Thread><CallStack>ntdll           0x00007ff9b78e0000 + 161c44          
+KERNELBASE      0x00007ff9b4d20000 + 3bc5f           
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a31463         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 488764f         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 4887519         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1aa1968         
+AI_CHAT_Plugin  0x00007ff6faf40000 + 1a9a5ff         
+KERNEL32        0x00007ff9b7390000 + 2e8d7           
+</CallStack>
+<IsCrashed>false</IsCrashed>
+<Registers></Registers>
+<ThreadID>24388</ThreadID>
+<ThreadName>AudioMixerRenderThread(1)</ThreadName>
+</Thread>
+</Threads>
+</RuntimeProperties>
+<PlatformProperties>
+<PlatformIsRunningWindows>1</PlatformIsRunningWindows>
+<PlatformIsRunningWine>false</PlatformIsRunningWine>
+<PlatformSupportsWindows11>true</PlatformSupportsWindows11>
+<IsRunningOnBattery>true</IsRunningOnBattery>
+<IsUsingBatterySaver>false</IsUsingBatterySaver>
+<PlatformCallbackResult>0</PlatformCallbackResult>
+<CrashTrigger>0</CrashTrigger>
+</PlatformProperties>
+<EngineData>
+<MatchingDPStatus>WindowsNo errors</MatchingDPStatus>
+<RHI.IntegratedGPU>false</RHI.IntegratedGPU>
+<RHI.DriverDenylisted>false</RHI.DriverDenylisted>
+<RHI.D3DDebug>false</RHI.D3DDebug>
+<RHI.DRED>false</RHI.DRED>
+<RHI.DREDMarkersOnly>false</RHI.DREDMarkersOnly>
+<RHI.DREDContext>false</RHI.DREDContext>
+<RHI.Aftermath>true</RHI.Aftermath>
+<RHI.RHIName>D3D12</RHI.RHIName>
+<RHI.AdapterName>NVIDIA GeForce RTX 4070 Laptop GPU</RHI.AdapterName>
+<RHI.UserDriverVersion>576.80</RHI.UserDriverVersion>
+<RHI.InternalDriverVersion>32.0.15.7680</RHI.InternalDriverVersion>
+<RHI.DriverDate>6-12-2025</RHI.DriverDate>
+<RHI.FeatureLevel>SM6</RHI.FeatureLevel>
+<RHI.GPUVendor>NVIDIA</RHI.GPUVendor>
+<RHI.DeviceId>2820</RHI.DeviceId>
+<DeviceProfile.Name>Windows</DeviceProfile.Name>
+<Platform.AppHasFocus>true</Platform.AppHasFocus>
+<RHI.DREDHasBreadcrumbData>false</RHI.DREDHasBreadcrumbData>
+<RHI.DREDHasPageFaultData>false</RHI.DREDHasPageFaultData>
+</EngineData>
+<GameData>
+</GameData>
+</FGenericCrashContext>

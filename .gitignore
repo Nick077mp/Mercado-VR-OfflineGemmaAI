@@ -41,13 +41,4 @@ Thumbs.db
 # Audio de referencia (mantener en repo)
 !colombian_voice.wav
 
-# Unreal Engine
-AI_Push-to-talk/Windows/AI_CHAT_Plugin/Binaries/
-AI_Push-to-talk/Windows/AI_CHAT_Plugin/Content/Paks/
-AI_Push-to-talk/Windows/AI_CHAT_Plugin/Saved/
-AI_Push-to-talk/Windows/Engine/
-*.pdb
-*.exe
-*.ucas
-*.utoc
-*.pak
+
