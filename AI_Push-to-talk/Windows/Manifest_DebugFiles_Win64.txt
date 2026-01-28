@@ -1,0 +1,6 @@
+AI_CHAT_Plugin/Binaries/Win64/AI_CHAT_Plugin.pdb	2026-01-21T20:53:39.140Z
+Engine/Content/SlateDebug/Fonts/LastResort.tps	2026-01-13T16:40:21.610Z
+Engine/Content/SlateDebug/Fonts/LastResort.ttf	2026-01-13T16:40:21.611Z
+Engine/Extras/GPUDumpViewer/GPUDumpViewer.html	2026-01-13T16:40:43.168Z
+Engine/Extras/GPUDumpViewer/OpenGPUDumpViewer.bat	2026-01-13T16:40:43.168Z
+Engine/Extras/GPUDumpViewer/OpenGPUDumpViewer.sh	2026-01-13T16:40:43.168Z
