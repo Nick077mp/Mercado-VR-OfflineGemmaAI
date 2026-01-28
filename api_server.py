@@ -32,7 +32,8 @@ from services.ollama_service import (
     STATE_ADDITIONAL_SHOPPING,
     STATE_ACCEPTED,
     STATE_PAYMENT,
-    STATE_FINISHED
+    STATE_FINISHED,
+    check_ollama_available,
 )
 
 # Importar servicios de audio como en main.py
@@ -420,15 +421,18 @@ def record_audio(duration=5, sample_rate=16000):
 # UTILIDADES
 # =========================
 async def check_ollama_health() -> bool:
-    """Verificar que Ollama esté disponible"""
+    """Verificar que Ollama esté disponible (chequeo ligero y rápido).
+
+    Usa un ping muy liviano a la API de Ollama en lugar de generar texto
+    completo con el modelo, para evitar bloqueos cuando la GPU/CPU está
+    ocupada (por ejemplo, cuando la app de VR está corriendo).
+    """
     try:
-        # Hacer una llamada simple a Ollama
-        test_response, _ = ollama_generate([], "Hola", STATE_NEGOTIATING)
-        return test_response is not None
+        # Ejecutar el chequeo de forma no bloqueante para el event loop
+        return await asyncio.to_thread(check_ollama_available, 2.0)
     except Exception as e:
         print(f"❌ Ollama no disponible: {e}")
         return False
-
 def process_voice_to_response(audio_data):
     """Procesar audio completo: STT → IA → TTS"""
     try:
@@ -641,12 +645,12 @@ async def process_audio_background(audio_path: str):
         
         conversation_state = new_state
         
-        # Actualizar historial
+        # Actualizar historial (formato compatible con ollama_service.build_prompt_with_history)
         if ai_response:
-            conversation_history.append({
-                "user": user_text,
-                "assistant": ai_response
-            })
+            conversation_history.extend([
+                {"role": "user", "content": user_text},
+                {"role": "assistant", "content": ai_response}
+            ])
             conversation_history = trim_history(conversation_history)
             
             print(f"🤖 Cliente: {ai_response}")

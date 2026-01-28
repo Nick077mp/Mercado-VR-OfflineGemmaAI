@@ -11,6 +11,7 @@ import numpy as np
 import asyncio
 import soundfile as sf
 import threading
+import re
 from pathlib import Path
 from piper import PiperVoice
 
@@ -22,6 +23,53 @@ PIPER_MODEL = "voices/es_ES-davefx-medium.onnx"  # Voz española masculina
 # Modelo global
 PIPER_VOICE = None
 TTS_LOCK = threading.Lock()
+
+# ==============================
+# LIMPIEZA DE TEXTO PARA TTS
+# ==============================
+def clean_text_for_tts(text: str) -> str:
+    """
+    Limpia texto problemático para TTS.
+    Piper pronuncia algunas interjecciones letra por letra (ej: "Mmm" → "eme-eme-eme").
+    Esta función las reemplaza por alternativas naturales o las elimina.
+    """
+    if not text:
+        return text
+    
+    # Patrones de interjecciones problemáticas y sus reemplazos
+    # Formato: (patrón regex, reemplazo)
+    replacements = [
+        # "Mmm" al inicio de oración → eliminar completamente
+        (r'^[Mm]+[\s,]+', ''),
+        # "Mmm" en medio de texto → reemplazar por pausa natural
+        (r'\s[Mm]+[\s,]+', ', '),
+        # "Hmm" similar
+        (r'^[Hh]mm+[\s,]+', ''),
+        (r'\s[Hh]mm+[\s,]+', ', '),
+        # "Ahhh", "Ohhh" prolongados
+        (r'\b[Aa]h{2,}\b', 'Ah'),
+        (r'\b[Oo]h{2,}\b', 'Oh'),
+        # "Ehhh" prolongado
+        (r'\b[Ee]h{2,}\b', 'Eh'),
+        # Múltiples signos de exclamación/interrogación
+        (r'!{2,}', '!'),
+        (r'\?{2,}', '?'),
+        # Puntos suspensivos excesivos
+        (r'\.{4,}', '...'),
+    ]
+    
+    result = text
+    for pattern, replacement in replacements:
+        result = re.sub(pattern, replacement, result)
+    
+    # Limpiar espacios múltiples
+    result = re.sub(r'\s{2,}', ' ', result).strip()
+    
+    # Si el texto quedó vacío o muy corto, devolver algo mínimo
+    if len(result) < 2:
+        return text  # Devolver original si la limpieza lo dejó vacío
+    
+    return result
 
 def load_tts_engine():
     """Inicializa Piper TTS (sin clonación, voz natural)"""
@@ -66,6 +114,9 @@ def _generate_audio_sync(text: str, output_path: str = None) -> str:
                 return None
         
         try:
+            # ✅ Limpiar texto problemático para TTS
+            clean_text = clean_text_for_tts(text)
+            
             # Crear archivo de salida
             if output_path is None:
                 temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.wav')
@@ -79,8 +130,8 @@ def _generate_audio_sync(text: str, output_path: str = None) -> str:
                 wav_file.setsampwidth(2)  # 16-bit
                 wav_file.setframerate(PIPER_VOICE.config.sample_rate)
                 
-                # Sintetizar y escribir audio
-                for audio_chunk in PIPER_VOICE.synthesize(text):
+                # Sintetizar y escribir audio (usando texto limpio)
+                for audio_chunk in PIPER_VOICE.synthesize(clean_text):
                     wav_file.writeframes(audio_chunk.audio_int16_bytes)
             
             return output_path
