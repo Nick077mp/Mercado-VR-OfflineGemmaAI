@@ -37,15 +37,14 @@ def clean_text_for_tts(text: str) -> str:
         return text
     
     # Patrones de interjecciones problemáticas y sus reemplazos
-    # Formato: (patrón regex, reemplazo)
     replacements = [
         # "Mmm" al inicio de oración → eliminar completamente
-        (r'^[Mm]+[\s,]+', ''),
+        (r'^[Mm]+[,\s]+', ''),
         # "Mmm" en medio de texto → reemplazar por pausa natural
-        (r'\s[Mm]+[\s,]+', ', '),
+        (r'\s[Mm]+[,\s]+', ', '),
         # "Hmm" similar
-        (r'^[Hh]mm+[\s,]+', ''),
-        (r'\s[Hh]mm+[\s,]+', ', '),
+        (r'^[Hh]mm+[,\s]+', ''),
+        (r'\s[Hh]mm+[,\s]+', ', '),
         # "Ahhh", "Ohhh" prolongados
         (r'\b[Aa]h{2,}\b', 'Ah'),
         (r'\b[Oo]h{2,}\b', 'Oh'),
@@ -56,6 +55,11 @@ def clean_text_for_tts(text: str) -> str:
         (r'\?{2,}', '?'),
         # Puntos suspensivos excesivos
         (r'\.{4,}', '...'),
+        # "salado/salada" → "caro/cara" (Piper pronuncia mejor)
+        (r'\bsalado\b', 'caro'),
+        (r'\bsalada\b', 'cara'),
+        (r'\bSalado\b', 'Caro'),
+        (r'\bSalada\b', 'Cara'),
     ]
     
     result = text
@@ -67,7 +71,7 @@ def clean_text_for_tts(text: str) -> str:
     
     # Si el texto quedó vacío o muy corto, devolver algo mínimo
     if len(result) < 2:
-        return text  # Devolver original si la limpieza lo dejó vacío
+        return text
     
     return result
 
