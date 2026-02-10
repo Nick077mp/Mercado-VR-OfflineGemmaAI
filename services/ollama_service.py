@@ -6,7 +6,7 @@ from typing import List, Dict, Optional, Tuple
 # CONFIGURACIÓN
 # ==============================
 OLLAMA_URL = "http://localhost:11434/api/generate"
-OLLAMA_MODEL = "customer"
+OLLAMA_MODEL = "gemma3:4b"
 MAX_HISTORY = 20
 MAX_PRODUCTS = 5  # Límite de productos por compra
 
@@ -20,22 +20,216 @@ STATE_PAYMENT = "PAYMENT_REQUESTED"
 STATE_FINISHED = "FINISHED"
 
 # ==============================
-# SYSTEM PROMPT
+# PRICE TRACKER - VALIDACIÓN DE TOTALES (NUEVO)
+# ==============================
+class PriceTracker:
+    """Rastrea productos, precios y valida totales."""
+    
+    def __init__(self):
+        self.products = {}  # {"producto": {"quantity": 2, "price": 3500}}
+        self.total_calculated = 0
+    
+    def add_product(self, name: str, quantity: int, price: int):
+        """Agrega o actualiza un producto."""
+        self.products[name.lower()] = {
+            "quantity": quantity,
+            "price": price,
+            "subtotal": quantity * price
+        }
+        self._recalculate_total()
+    
+    def _recalculate_total(self):
+        """Recalcula el total."""
+        self.total_calculated = sum(
+            p["quantity"] * p["price"] 
+            for p in self.products.values()
+        )
+    
+    def validate_seller_total(self, seller_total: int) -> Dict:
+        """Valida que el total del vendedor sea correcto."""
+        if self.total_calculated == seller_total:
+            return {
+                "valid": True,
+                "correct_total": self.total_calculated,
+                "difference": 0
+            }
+        else:
+            return {
+                "valid": False,
+                "correct_total": self.total_calculated,
+                "seller_total": seller_total,
+                "difference": seller_total - self.total_calculated,
+                "alert": f"⚠️ DISCREPANCIA: Total correcto {self.total_calculated}, "
+                        f"vendedor dice {seller_total} (diferencia: {seller_total - self.total_calculated})"
+            }
+    
+    def get_summary(self) -> str:
+        """Retorna resumen de la compra para validación."""
+        if not self.products:
+            return "Sin productos registrados"
+        
+        lines = []
+        for name, data in self.products.items():
+            lines.append(f"- {name}: {data['quantity']} × {data['price']} = {data['subtotal']}")
+        lines.append(f"TOTAL: {self.total_calculated}")
+        return "\n".join(lines)
+
+
+# ==============================
+# FUNCIONES DE DETECCIÓN (NUEVO)
+# ==============================
+def extract_price_and_product(text: str) -> Optional[Tuple[str, int]]:
+    """
+    Extrae producto y precio de un mensaje del vendedor.
+    Ejemplo: "Aguacate a 3500 pesos" → ("aguacate", 3500)
+    """
+    t = text.lower()
+    
+    # Patrones para extraer precio
+    price_pattern = r"(?:(?:\$)\s*)?(?:(?:\d{1,3}(?:[.,]\d{3})+)|(?:\d+))(?:\s*(?:pesos|cop))?"
+    prices = re.findall(price_pattern, t)
+    
+    if not prices:
+        # Buscar "X mil"
+        mil_pattern = r"(\d+)\s*mil"
+        mil_matches = re.findall(mil_pattern, t)
+        if mil_matches:
+            prices = [str(int(m) * 1000) for m in mil_matches]
+    
+    if not prices:
+        return None
+    
+    # Extraer el precio (el primero mencionado)
+    price_str = prices[0].replace(".", "").replace(",", "")
+    try:
+        price = int(price_str)
+    except ValueError:
+        return None
+    
+    # Extraer producto (palabra antes del precio)
+    product_pattern = r"(\w+)\s+(?:a\s+)?(?:en\s+)?(?:\$\s*)?(?:\d+)"
+    matches = re.findall(product_pattern, t)
+    
+    if matches:
+        product = matches[0].lower()
+        # Filtrar palabras que no son productos
+        ignore = {"el", "la", "los", "las", "un", "una", "unos", "unas", "tengo", "tiene"}
+        if product not in ignore:
+            return (product, price)
+    
+    return None
+
+
+def detect_seller_total(text: str) -> Optional[int]:
+    """
+    Detecta cuando el vendedor anuncia el total.
+    Ejemplo: "El total sería 42 mil pesos" → 42000
+    """
+    t = text.lower()
+    
+    # Patrones que indican total
+    if "total" not in t and "serían" not in t and "sería" not in t:
+        return None
+    
+    # Buscar número
+    mil_pattern = r"(\d+)\s*mil"
+    mil_matches = re.findall(mil_pattern, t)
+    if mil_matches:
+        return int(mil_matches[0]) * 1000
+    
+    price_pattern = r"(?:\$\s*)?(\d+(?:[.,]\d{3})+|\d+)(?:\s*pesos)?"
+    price_matches = re.findall(price_pattern, t)
+    if price_matches:
+        price_str = price_matches[0].replace(".", "").replace(",", "")
+        try:
+            return int(price_str)
+        except ValueError:
+            pass
+    
+    return None
+
+
+# ==============================
+# ELIMINADOR DE REPETICIONES (NUEVO)
+# ==============================
+_GREETING_PATTERN = re.compile(
+    r"\b(buenos\s+días|buenas\s+tardes|buenas\s+noches|hola)\b",
+    re.IGNORECASE
+)
+
+_GREETING_REPLACEMENTS = [
+    "Claro", "Perfecto", "Entiendo", "Muy bien", "De acuerdo",
+    "Está bien", "Excelente", "Dale", "Listo"
+]
+
+
+def _remove_repeated_greetings(text: str) -> str:
+    """
+    Elimina o reemplaza saludos repetidos en la misma respuesta.
+    Ejemplo: "Buenos días. Buenos días. ¿Cómo estás?" 
+    → "Buenos días. Claro. ¿Cómo estás?"
+    """
+    greetings = _GREETING_PATTERN.findall(text)
+    
+    if len(greetings) <= 1:
+        return text
+    
+    # Si hay múltiples saludos, reemplazar los posteriores
+    result = text
+    greeting_count = 0
+    
+    def replace_greeting(match):
+        nonlocal greeting_count
+        greeting_count += 1
+        if greeting_count == 1:
+            return match.group(0)  # Mantener el primero
+        else:
+            # Reemplazar con variante
+            replacement = _GREETING_REPLACEMENTS[greeting_count % len(_GREETING_REPLACEMENTS)]
+            return replacement
+    
+    result = _GREETING_PATTERN.sub(replace_greeting, result)
+    return result
+
+
+# ==============================
+# SYSTEM PROMPT - MEJORADO
 # ==============================
 SYSTEM_PROMPT = """
-Eres un campesino colombiano que compra en la plaza de mercado.
-Hablas natural, tranquilo y educado.
+Eres José, un campesino colombiano que compra en la plaza de mercado. Hablas con naturalidad, tranquilo y educado.
 
-Reglas estrictas:
-- Siempre eres el COMPRADOR
-- Compra entre 3 y 5 productos en total (NO MÁS)
-- Mantén una lista mental de lo que has pedido
-- Cuando ya tengas suficientes productos, di que con eso es todo
-- Ten una conversación natural, se fluido, conversador pero sin exagerar
-- Nunca vendes
-- Usas pesos colombianos (COP), nunca dólares
-- Respeta el estado actual de la conversación
-- Cuando pagas, te despides y no hablas más
+COMPORTAMIENTO:
+- Eres conversador: haces preguntas genuinas sobre calidad, frescura y origen de productos
+- Mantienes una lista mental clara de productos y precios (sin inventar datos)
+- Eres proactivo: confirmas el total antes de pagar, verificando que coincida con lo acordado
+- Hablas de forma fluida y natural, sin repetir lo ya dicho
+
+RESTRICCIONES MATEMÁTICAS:
+- Solo suma precios que el vendedor haya confirmado explícitamente
+- Si no conoces un precio exacto, pregunta antes de asumir
+- Verifica mentalmente: cantidad × precio = subtotal
+- Nunca inventes números ni precios que no se hayan mencionado
+- Si hay dudas en el cálculo, pide que el vendedor confirme
+
+CONVERSACIÓN NATURAL:
+- NO repitas "Buenos días/tardes" en cada respuesta
+- Varía: "Claro", "Perfecto", "Entiendo", "Muy bien", "Excelente"
+- Haz preguntas específicas: "¿Cuántos necesitas?", "¿Algo más?"
+- Sugiere productos: "¿Necesitas papas, cebolla, algo más?"
+- Pregunta preferencias: "¿Los prefieres bien maduros?"
+- Cuando el vendedor dé precio, pregunta cantidad: "¿Cuántos/cuántos kilos?"
+
+LÍMITES DE COMPRA:
+- Compras entre 3 y 5 productos máximo
+- Cuando tengas suficientes, dices "con eso está bien" o similar
+- Siempre eres el COMPRADOR, nunca vendes
+- Usas pesos colombianos (COP)
+
+GESTIÓN DE CONTEXTO:
+- Recuerda solo lo que se ha dicho en esta conversación
+- No repitas preguntas o comentarios anteriores
+- Mantén coherencia con lo ya acordado
+- Cuando pagas, te despides y la conversación termina
 """
 
 # ==============================
@@ -70,6 +264,7 @@ Ejemplo: "¿Qué más tiene?" o "¿Tiene cebollas?" o "Con eso es todo, ¿cuánt
     STATE_READY_TO_PAY: """
 🔹 ESTADO: LISTO PARA PAGAR
 Comportamiento:
+- Suma mentalmente el total de tu pedido y compáralo con el precio que te da el vendedor
 - Ya aceptaste todos los precios y decidiste comprar
 - NO vuelvas a pedir descuentos ni a negociar
 - Solo confirma el total y pregunta cómo pagar
@@ -346,12 +541,13 @@ def _apply_guardrails(text: str, state: str) -> str:
     return s
 
 # ==============================
-# CONSTRUCCIÓN DE PROMPT CON ESTADOS ACTIVOS + CONTEO DE PRODUCTOS
+# CONSTRUCCIÓN DE PROMPT CON ESTADOS ACTIVOS + CONTEO DE PRODUCTOS - MEJORADO
 # ==============================
 def build_prompt_with_history(
     history: List[Dict[str, str]], 
     user_text: str, 
-    state: str
+    state: str,
+    price_tracker: Optional[PriceTracker] = None
 ) -> str:
     trimmed_history = trim_history(history)
     
@@ -364,7 +560,19 @@ def build_prompt_with_history(
     state_instruction = STATE_INSTRUCTIONS.get(state, STATE_INSTRUCTIONS[STATE_NEGOTIATING])
     prompt_parts.append("\n" + state_instruction)
     
-    # 3. Conteo de productos (para BUILDING_ORDER y READY_TO_PAY)
+    # 3. NUEVO: Inyectar validación de total si hay discrepancia
+    if state == STATE_READY_TO_PAY and price_tracker:
+        seller_total = detect_seller_total(user_text)
+        if seller_total:
+            validation = price_tracker.validate_seller_total(seller_total)
+            if not validation["valid"]:
+                prompt_parts.append(f"\n⚠️ ALERTA MATEMÁTICA:")
+                prompt_parts.append(f"Vendedor dice: {seller_total} pesos")
+                prompt_parts.append(f"Cálculo correcto: {validation['correct_total']} pesos")
+                prompt_parts.append(f"Diferencia: {validation['difference']} pesos")
+                prompt_parts.append("Debes cuestionar este total. Verifica mentalmente.")
+    
+    # 4. Conteo de productos (para BUILDING_ORDER y READY_TO_PAY)
     if state in (STATE_BUILDING_ORDER, STATE_READY_TO_PAY):
         product_count = count_products_purchased(trimmed_history)
         product_list = extract_product_list(trimmed_history)
@@ -382,10 +590,10 @@ def build_prompt_with_history(
         if seller_asks_what_to_buy(user_text):
             prompt_parts.append("ℹ️ El vendedor pregunta qué llevas. LISTA todos los productos que has pedido.")
     
-    # 4. Instrucciones generales
+    # 5. Instrucciones generales
     prompt_parts.append("Instrucciones generales: Máximo 2 frases. TÚ ERES EL COMPRADOR.\n")
     
-    # 5. Historial de conversación
+    # 6. Historial de conversación
     if trimmed_history:
         prompt_parts.append("--- Conversación previa ---")
         for msg in trimmed_history:
@@ -393,7 +601,7 @@ def build_prompt_with_history(
             prompt_parts.append(f"{role_label}: {msg['content']}")
         prompt_parts.append("--- Fin conversación previa ---\n")
     
-    # 6. Mensaje actual
+    # 7. Mensaje actual
     prompt_parts.append(f"Vendedor dice ahora: {user_text}")
     prompt_parts.append("\nTu respuesta (máximo 2 frases como comprador):")
     
@@ -459,12 +667,13 @@ def detect_state_transition(
     return current_state
 
 # ==============================
-# MOTOR PRINCIPAL
+# MOTOR PRINCIPAL - MEJORADO
 # ==============================
 def ollama_generate(
     history: List[Dict[str, str]],
     user_text: str,
-    state: str
+    state: str,
+    price_tracker: Optional[PriceTracker] = None
 ) -> Tuple[Optional[str], str]:
     user_text = sanitize_text(user_text)
 
@@ -486,15 +695,23 @@ def ollama_generate(
             print(f"📦 Límite de productos alcanzado ({product_count}/{MAX_PRODUCTS})")
             return ready_to_pay_response(), STATE_READY_TO_PAY
 
+    # NUEVO: Validar total si estamos en READY_TO_PAY
+    if state == STATE_READY_TO_PAY and price_tracker:
+        seller_total = detect_seller_total(user_text)
+        if seller_total:
+            validation = price_tracker.validate_seller_total(seller_total)
+            if not validation["valid"]:
+                print(f"⚠️ {validation['alert']}")
+
     payload = {
         "model": OLLAMA_MODEL,
         "stream": False,
-        "prompt": build_prompt_with_history(history, user_text, state),
-        "temperature": 0.7,
+        "prompt": build_prompt_with_history(history, user_text, state, price_tracker),
+        "temperature": 0.85,
         "options": {
             "num_ctx": 4096,
-            "num_predict": 200,
-            "top_k": 40,
+            "num_predict": 280,
+            "top_k": 50,
             "top_p": 0.9
         }
     }
@@ -507,6 +724,9 @@ def ollama_generate(
         print(f"❌ Error Ollama: {e}")
         assistant_text = "Disculpe vecino, no le entendí bien. ¿Me lo repite por favor?"
 
+    # NUEVO: Eliminar repeticiones de saludos
+    assistant_text = _remove_repeated_greetings(assistant_text)
+    
     # Aplicar guardrails
     assistant_text = _apply_guardrails(assistant_text, state)
     
