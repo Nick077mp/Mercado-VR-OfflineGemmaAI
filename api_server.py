@@ -7,6 +7,7 @@ Python maneja el ciclo completo:
 3. VR solo RECIBE texto para animar avatar
 
 Autor: Nicolás
+MEJORADO CON: Validación de totales, eliminación de repeticiones, conversación fluida
 """
 
 from fastapi import FastAPI, HTTPException, BackgroundTasks
@@ -23,9 +24,12 @@ import queue
 import time
 import httpx
 
-# Importar servicios existentes
+# Importar servicios existentes - MEJORADO
 from services.ollama_service import (
     ollama_generate,
+    PriceTracker,  # NUEVO
+    extract_price_and_product,  # NUEVO
+    detect_seller_total,  # NUEVO
     sanitize_text,
     trim_history,
     STATE_NEGOTIATING,
@@ -99,6 +103,7 @@ class SystemStatus(BaseModel):
 # =========================
 conversation_history = []
 conversation_state = STATE_NEGOTIATING
+price_tracker = PriceTracker()  # NUEVO - Instancia global del tracker
 
 tts_ready = False
 audio_ready = False
@@ -417,7 +422,7 @@ async def check_ollama_health() -> bool:
 def process_voice_to_response(audio_data):
     """Procesar audio completo: STT → IA → TTS"""
     try:
-        global conversation_history, conversation_state
+        global conversation_history, conversation_state, price_tracker
 
         print("🔄 Transcribiendo...")
         transcription = transcribe_audio_numpy(audio_data)
@@ -427,11 +432,20 @@ def process_voice_to_response(audio_data):
         user_text = sanitize_text(transcription)
         print(f"📝 Transcripción: {user_text}")
 
+        # NUEVO: Detectar y registrar productos del vendedor
+        product_price = extract_price_and_product(user_text)
+        if product_price:
+            product_name, price = product_price
+            price_tracker.add_product(product_name, 1, price)
+            print(f"📦 Producto registrado: {product_name} × 1 @ {price} COP")
+
         print("🤖 IA respondiendo...")
+        # NUEVO: Pasar price_tracker a ollama_generate
         ai_response, new_state = ollama_generate(
             conversation_history,
             user_text,
-            conversation_state
+            conversation_state,
+            price_tracker=price_tracker
         )
 
         conversation_history.extend([
@@ -569,8 +583,8 @@ async def start_recording():
 
 
 async def process_audio_background(audio_path: str):
-    """Procesar audio en background: STT + IA + TTS + envío a VR"""
-    global conversation_history, conversation_state, latest_ai_response
+    """Procesar audio en background: STT + IA + TTS + envío a VR - MEJORADO"""
+    global conversation_history, conversation_state, latest_ai_response, price_tracker
 
     try:
         print("🔄 Transcribiendo audio...")
@@ -591,11 +605,20 @@ async def process_audio_background(audio_path: str):
         print(f"💬 Usuario: {user_text}")
         print("🤖 IA procesando...")
 
+        # NUEVO: Detectar y registrar productos del vendedor
+        product_price = extract_price_and_product(user_text)
+        if product_price:
+            product_name, price = product_price
+            price_tracker.add_product(product_name, 1, price)
+            print(f"📦 Producto registrado: {product_name} × 1 @ {price} COP")
+
+        # NUEVO: Pasar price_tracker a ollama_generate
         ai_response, new_state = await asyncio.to_thread(
             ollama_generate,
             conversation_history,
             user_text,
-            conversation_state
+            conversation_state,
+            price_tracker
         )
 
         conversation_state = new_state
@@ -703,23 +726,32 @@ async def get_latest_response_polling():
 # FUNCIÓN CALLBACK PARA PROCESAMIENTO DE VOZ
 # =========================
 def callback_function(text):
-    """Procesar transcripción del usuario y generar respuesta de IA"""
+    """Procesar transcripción del usuario y generar respuesta de IA - MEJORADO"""
     print(f"\n💬 Usuario: {text}")
 
     if not text or len(text.strip()) < 2:
         print("⚠️ Texto muy corto, omitiendo")
         return
 
-    global conversation_history, conversation_state, vr_response_queue
+    global conversation_history, conversation_state, vr_response_queue, price_tracker
 
     try:
         user_text = sanitize_text(text)
         if user_text:
+            # NUEVO: Detectar y registrar productos del vendedor
+            product_price = extract_price_and_product(user_text)
+            if product_price:
+                product_name, price = product_price
+                price_tracker.add_product(product_name, 1, price)
+                print(f"📦 Producto registrado: {product_name} × 1 @ {price} COP")
+
             print("🤖 IA procesando...")
+            # NUEVO: Pasar price_tracker a ollama_generate
             ai_response, new_state = ollama_generate(
                 conversation_history,
                 user_text,
-                conversation_state
+                conversation_state,
+                price_tracker=price_tracker
             )
 
             conversation_history.extend([
@@ -784,6 +816,13 @@ def start_api_server(host: str = "127.0.0.1", port: int = 8000):
     print("   POST /start_recording  <- Botón presionado")
     print("   POST /stop_recording   <- Botón soltado")
     print("🎯 Sin escucha automática - Solo responde a botón VR")
+    print("=" * 60)
+
+    print("\n✨ MEJORAS INTEGRADAS:")
+    print("   ✅ Validación de totales (detección de estafas)")
+    print("   ✅ Eliminación de repeticiones de saludos")
+    print("   ✅ Conversación más fluida y natural")
+    print("   ✅ Mejor gestión de contexto")
     print("=" * 60)
 
     uvicorn.run(
