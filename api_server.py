@@ -41,7 +41,7 @@ from services.ollama_service import (
 
 # Importar servicios de audio
 from services.stt_faster_whisper import record_and_transcribe_streaming, transcribe_audio_file
-from services.tts_piper_only import speak_text, load_tts_engine
+# TTS deshabilitado para producción
 import sounddevice as sd
 import numpy as np
 import io
@@ -95,7 +95,6 @@ class SystemStatus(BaseModel):
     active_sessions: int
     ollama_available: bool
     stt_loaded: bool
-    tts_loaded: bool
     system_info: Dict[str, str]
 
 # =========================
@@ -105,7 +104,6 @@ conversation_history = []
 conversation_state = STATE_NEGOTIATING
 price_tracker = PriceTracker()  # NUEVO - Instancia global del tracker
 
-tts_ready = False
 audio_ready = False
 selected_microphone_id = None
 
@@ -311,20 +309,15 @@ def auto_detect_vr_microphone():
 
 
 def init_audio_services():
-    """Inicializar servicios TTS"""
-    global tts_ready, audio_ready
+    """Inicializar servicios de audio (STT solamente, TTS deshabilitado)"""
+    global audio_ready
 
     try:
-        print("🔄 Inicializando Piper TTS (solo, sin clonación)...")
-        load_tts_engine()
-        tts_ready = True
-        print("✅ Piper TTS inicializado")
-        print("✅ Voz: Mexicana natural (sin clonación)")
-        print("✅ Calidad: Alta - Sin artefactos")
+        print("🔄 Inicializando servicios de audio (solo STT)...")
         audio_ready = True
+        print("✅ Servicios de audio inicializados (STT listo)")
     except Exception as e:
         print(f"❌ Error inicializando servicios de audio: {e}")
-        tts_ready = False
         audio_ready = False
 
 
@@ -454,8 +447,7 @@ def process_voice_to_response(audio_data):
         ])
         conversation_state = new_state
 
-        print("🎵 Generando audio...")
-        speak_text(ai_response)
+        # TTS deshabilitado para producción
 
         print(f"✅ Ciclo completo: {user_text} → {ai_response}")
 
@@ -544,7 +536,6 @@ async def get_status():
             active_sessions=1,
             ollama_available=ollama_ok,
             stt_loaded=True,
-            tts_loaded=tts_ready,
             system_info={
                 "mode": "api_server_vr_button_control",
                 "sessions_count": "1",
@@ -632,11 +623,7 @@ async def process_audio_background(audio_path: str):
 
             print(f"🤖 Cliente: {ai_response}")
 
-            try:
-                asyncio.create_task(asyncio.to_thread(speak_text, ai_response))
-                print("✅ TTS iniciado")
-            except Exception as tts_e:
-                print(f"⚠️ Error en TTS: {tts_e}")
+            # TTS deshabilitado para producción
 
             conversation_finished = conversation_state == STATE_FINISHED
 
@@ -765,7 +752,7 @@ def callback_function(text):
             vr_response_queue.put(ai_response)
             print(f"✅ Respuesta enviada a VR via queue")
 
-            speak_text(ai_response)
+            # TTS deshabilitado para producción
             print("✅ Respuesta completa\n")
 
     except Exception as e:
