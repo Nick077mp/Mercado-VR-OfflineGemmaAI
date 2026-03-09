@@ -11,6 +11,15 @@ MAX_HISTORY = 20
 MAX_PRODUCTS = 5  # Límite de productos por compra
 
 # ==============================
+# CONFIGURACIÓN CPU - Liberar VRAM para VR
+# ==============================
+# num_gpu=0 fuerza a Ollama a NO usar GPU (inferencia 100% CPU)
+# num_thread=0 deja que Ollama detecte automáticamente los núcleos óptimos
+# Cambiar a la cantidad de núcleos físicos de tu CPU para ajuste manual
+OLLAMA_NUM_GPU = 0       # 0 = Solo CPU, sin GPU
+OLLAMA_NUM_THREAD = 0    # 0 = Auto-detectar, o poner núcleos físicos (ej: 6, 8, 12)
+
+# ==============================
 # ESTADOS
 # ==============================
 STATE_NEGOTIATING = "NEGOTIATING"
@@ -725,7 +734,10 @@ def ollama_generate(
             "num_ctx": 4096,
             "num_predict": 280,
             "top_k": 50,
-            "top_p": 0.9
+            "top_p": 0.9,
+            # === CPU MODE: Liberar VRAM para VR ===
+            "num_gpu": OLLAMA_NUM_GPU,       # 0 = Todas las capas en CPU
+            **({"num_thread": OLLAMA_NUM_THREAD} if OLLAMA_NUM_THREAD > 0 else {}),
         }
     }
 

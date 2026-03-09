@@ -19,8 +19,22 @@ if %ERRORLEVEL% EQU 0 (
 echo [*] Ollama no detectado, iniciando...
 echo.
 
+REM ==========================================
+REM FORZAR MODO CPU - Liberar VRAM para VR
+REM ==========================================
+REM CUDA_VISIBLE_DEVICES vacio oculta todas las GPUs de Ollama
+set CUDA_VISIBLE_DEVICES=
+REM OLLAMA_NUM_GPU=0 indica 0 capas en GPU (todo en CPU)
+set OLLAMA_NUM_GPU=0
+REM Numero de hilos CPU (ajustar al numero de nucleos fisicos de tu CPU)
+REM Por defecto Ollama detecta automaticamente, pero puedes forzarlo
+REM set OLLAMA_NUM_THREAD=8
+
+echo [*] Modo CPU activado (GPU libre para VR)
+echo.
+
 REM Iniciar Ollama en segundo plano
-start "Ollama Server" ollama serve
+start "Ollama Server (CPU Mode)" cmd /k "set CUDA_VISIBLE_DEVICES= && set OLLAMA_NUM_GPU=0 && ollama serve"
 
 REM Esperar a que Ollama esté listo
 echo [*] Esperando a que Ollama este listo...

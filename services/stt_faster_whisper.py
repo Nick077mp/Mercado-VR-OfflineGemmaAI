@@ -30,6 +30,10 @@ if not is_first_run():
 
 os.environ['TORCH_HOME'] = os.path.expanduser('~/.cache/torch')
 
+# === FORZAR CPU: Liberar VRAM para VR ===
+# Ocultar GPUs de PyTorch (Silero VAD, Whisper) para no consumir VRAM
+os.environ['CUDA_VISIBLE_DEVICES'] = ''
+
 # =========================
 # SUPRESOR DE ERRORES CFFI
 # =========================

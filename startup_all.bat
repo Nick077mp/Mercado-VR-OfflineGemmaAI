@@ -27,8 +27,16 @@ if %ERRORLEVEL% EQU 0 (
     goto :PYTHON_SERVER
 )
 
+REM ==========================================
+REM FORZAR MODO CPU - Liberar VRAM para VR
+REM ==========================================
+set CUDA_VISIBLE_DEVICES=
+set OLLAMA_NUM_GPU=0
+echo [*] Modo CPU activado (GPU libre para VR)
+echo.
+
 echo [*] Iniciando Ollama...
-start "Ollama Server" ollama serve
+start "Ollama Server (CPU Mode)" cmd /k "set CUDA_VISIBLE_DEVICES= && set OLLAMA_NUM_GPU=0 && ollama serve"
 
 REM Esperar a que Ollama esté listo
 echo [*] Esperando a que Ollama este listo...
