@@ -14,10 +14,10 @@ MAX_PRODUCTS = 5  # Límite de productos por compra
 # CONFIGURACIÓN CPU - Liberar VRAM para VR
 # ==============================
 # num_gpu=0 fuerza a Ollama a NO usar GPU (inferencia 100% CPU)
-# num_thread=0 deja que Ollama detecte automáticamente los núcleos óptimos
-# Cambiar a la cantidad de núcleos físicos de tu CPU para ajuste manual
+# num_thread=6 reserva 6 de 8 núcleos para el modelo, 2 quedan para VR + OS
+# Ryzen 7 7435HS: 8 núcleos físicos / 16 hilos lógicos
 OLLAMA_NUM_GPU = 0       # 0 = Solo CPU, sin GPU
-OLLAMA_NUM_THREAD = 0    # 0 = Auto-detectar, o poner núcleos físicos (ej: 6, 8, 12)
+OLLAMA_NUM_THREAD = 6    # 6 núcleos para modelo (prioridad), 2 para VR + OS
 
 # ==============================
 # ESTADOS
