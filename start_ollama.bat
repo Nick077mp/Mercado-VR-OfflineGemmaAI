@@ -62,6 +62,20 @@ if %ERRORLEVEL% NEQ 0 (
 echo [OK] Ollama servidor esta corriendo!
 echo [OK] Disponible en: http://localhost:11434
 echo ========================================
+echo.
+
+REM ==========================================
+REM WARMUP - Precargar modelo en RAM
+REM ==========================================
+echo [*] Precargando modelo gemma3:4b en RAM (warmup)...
+echo [*] Esto puede tardar 15-20 segundos la primera vez...
+curl -s -X POST http://localhost:11434/api/generate -d "{\"model\": \"gemma3:4b\", \"prompt\": \"Hola\", \"stream\": false, \"options\": {\"num_predict\": 1, \"num_ctx\": 4096, \"num_gpu\": 0, \"num_thread\": 6}, \"keep_alive\": \"30m\"}" >nul 2>&1
+if %ERRORLEVEL% EQU 0 (
+    echo [OK] Modelo precargado y listo en RAM
+) else (
+    echo [!] Warmup fallo - la primera interaccion sera mas lenta
+)
+echo ========================================
 
 :END
 echo.

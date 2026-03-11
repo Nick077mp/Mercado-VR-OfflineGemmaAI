@@ -730,6 +730,7 @@ def ollama_generate(
         "stream": False,
         "prompt": build_prompt_with_history(history, user_text, state, price_tracker),
         "temperature": 0.85,
+        "keep_alive": "30m",  # Mantener modelo en RAM 30 min entre peticiones
         "options": {
             "num_ctx": 4096,
             "num_predict": 280,
