@@ -26,16 +26,12 @@ REM CUDA_VISIBLE_DEVICES vacio oculta todas las GPUs de Ollama
 set CUDA_VISIBLE_DEVICES=
 REM OLLAMA_NUM_GPU=0 indica 0 capas en GPU (todo en CPU)
 set OLLAMA_NUM_GPU=0
-REM Numero de hilos CPU: 6 de 8 nucleos para el modelo (prioridad)
-REM Los 2 nucleos restantes quedan para VR + sistema operativo
-set OLLAMA_NUM_THREAD=6
 
 echo [*] Modo CPU activado (GPU libre para VR)
-echo [*] Hilos asignados al modelo: 6 de 8 nucleos
 echo.
 
 REM Iniciar Ollama en segundo plano
-start "Ollama Server (CPU Mode)" cmd /k "set CUDA_VISIBLE_DEVICES= && set OLLAMA_NUM_GPU=0 && set OLLAMA_NUM_THREAD=6 && ollama serve"
+start "Ollama Server (CPU Mode)" cmd /k "set CUDA_VISIBLE_DEVICES= && set OLLAMA_NUM_GPU=0 && ollama serve"
 
 REM Esperar a que Ollama esté listo
 echo [*] Esperando a que Ollama este listo...
@@ -69,7 +65,7 @@ REM WARMUP - Precargar modelo en RAM
 REM ==========================================
 echo [*] Precargando modelo gemma3:4b en RAM (warmup)...
 echo [*] Esto puede tardar 15-20 segundos la primera vez...
-curl -s -X POST http://localhost:11434/api/generate -d "{\"model\": \"gemma3:4b\", \"prompt\": \"Hola\", \"stream\": false, \"options\": {\"num_predict\": 1, \"num_ctx\": 4096, \"num_gpu\": 0, \"num_thread\": 6}, \"keep_alive\": \"30m\"}" >nul 2>&1
+curl -s -X POST http://localhost:11434/api/generate -d "{\"model\": \"gemma3:4b\", \"prompt\": \"Hola\", \"stream\": false, \"options\": {\"num_predict\": 1, \"num_ctx\": 4096, \"num_gpu\": 0}, \"keep_alive\": \"30m\"}" >nul 2>&1
 if %ERRORLEVEL% EQU 0 (
     echo [OK] Modelo precargado y listo en RAM
 ) else (

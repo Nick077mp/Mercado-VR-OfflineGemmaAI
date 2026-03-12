@@ -14,10 +14,7 @@ MAX_PRODUCTS = 5  # Límite de productos por compra
 # CONFIGURACIÓN CPU - Liberar VRAM para VR
 # ==============================
 # num_gpu=0 fuerza a Ollama a NO usar GPU (inferencia 100% CPU)
-# num_thread=6 reserva 6 de 8 núcleos para el modelo, 2 quedan para VR + OS
-# Ryzen 7 7435HS: 8 núcleos físicos / 16 hilos lógicos
 OLLAMA_NUM_GPU = 0       # 0 = Solo CPU, sin GPU
-OLLAMA_NUM_THREAD = 6    # 6 núcleos para modelo (prioridad), 2 para VR + OS
 
 # ==============================
 # ESTADOS
@@ -738,7 +735,6 @@ def ollama_generate(
             "top_p": 0.9,
             # === CPU MODE: Liberar VRAM para VR ===
             "num_gpu": OLLAMA_NUM_GPU,       # 0 = Todas las capas en CPU
-            **({"num_thread": OLLAMA_NUM_THREAD} if OLLAMA_NUM_THREAD > 0 else {}),
         }
     }
 
