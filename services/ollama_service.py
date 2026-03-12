@@ -11,12 +11,43 @@ MAX_HISTORY = 20
 MAX_PRODUCTS = 5  # Límite de productos por compra
 
 # ==============================
-# CONFIGURACIÓN GPU - Solo GPU para inferencia
+# PERFILES DE RENDIMIENTO GPU/CPU
 # ==============================
-# num_gpu=999 envía TODAS las capas del modelo a GPU (0 capas en CPU)
-# num_thread=1 minimiza uso de CPU (solo coordinación básica)
-OLLAMA_NUM_GPU = 999     # 999 = Todas las capas en GPU, ninguna en CPU
-OLLAMA_NUM_THREAD = 1    # 1 = Mínimo CPU, toda la inferencia en GPU
+# Elige un perfil según tu hardware:
+#
+# "gpu_full"   → Todo en GPU (rápido, pero pelea con VR por VRAM)
+# "gpu_hybrid" → Capas parciales en GPU (RECOMENDADO con VR)
+# "cpu_only"   → Todo en CPU (sin conflicto GPU, más lento)
+#
+# Para VR en producción: usar "gpu_hybrid"
+PERFORMANCE_PROFILE = "gpu_hybrid"  # <<< CAMBIAR AQUÍ
+
+_PROFILES = {
+    "gpu_full": {
+        "num_gpu": 999,     # Todas las capas en GPU
+        "num_thread": 1,    # Mínimo CPU
+        "num_ctx": 4096,
+        "num_predict": 280,
+    },
+    "gpu_hybrid": {
+        "num_gpu": 20,      # ~20 capas en GPU, resto en CPU → VR conserva VRAM
+        "num_thread": 4,    # 4 hilos CPU para capas restantes
+        "num_ctx": 2048,    # Contexto reducido (conversación corta)
+        "num_predict": 150, # Máximo tokens (guardrail limita a 2 frases)
+    },
+    "cpu_only": {
+        "num_gpu": 0,       # Nada en GPU
+        "num_thread": 6,    # 6 hilos CPU
+        "num_ctx": 2048,
+        "num_predict": 150,
+    },
+}
+
+_ACTIVE_PROFILE = _PROFILES[PERFORMANCE_PROFILE]
+OLLAMA_NUM_GPU = _ACTIVE_PROFILE["num_gpu"]
+OLLAMA_NUM_THREAD = _ACTIVE_PROFILE["num_thread"]
+OLLAMA_NUM_CTX = _ACTIVE_PROFILE["num_ctx"]
+OLLAMA_NUM_PREDICT = _ACTIVE_PROFILE["num_predict"]
 
 # ==============================
 # ESTADOS
@@ -730,12 +761,11 @@ def ollama_generate(
         "prompt": build_prompt_with_history(history, user_text, state, price_tracker),
         "temperature": 0.85,
         "options": {
-            "num_ctx": 4096,
-            "num_predict": 280,
+            "num_ctx": OLLAMA_NUM_CTX,
+            "num_predict": OLLAMA_NUM_PREDICT,
             "top_k": 50,
             "top_p": 0.9,
-            # === GPU MODE: Solo GPU para inferencia ===
-            "num_gpu": OLLAMA_NUM_GPU,       # 999 = Todas las capas en GPU
+            "num_gpu": OLLAMA_NUM_GPU,
             **({"num_thread": OLLAMA_NUM_THREAD} if OLLAMA_NUM_THREAD > 0 else {}),
         }
     }

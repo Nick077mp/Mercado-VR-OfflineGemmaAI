@@ -28,16 +28,17 @@ if %ERRORLEVEL% EQU 0 (
 )
 
 REM ==========================================
-REM MODO GPU - Usar solo GPU para inferencia
+REM MODO GPU HIBRIDO - Compatible con VR
 REM ==========================================
 set CUDA_VISIBLE_DEVICES=0
-set OLLAMA_NUM_GPU=999
 set OLLAMA_FLASH_ATTENTION=1
-echo [*] Modo GPU activado (solo GPU)
+set OLLAMA_MAX_LOADED_MODELS=1
+set OLLAMA_KEEP_ALIVE=10m
+echo [*] Modo GPU Hibrido activado (compatible con VR)
 echo.
 
 echo [*] Iniciando Ollama...
-start "Ollama Server (GPU Mode)" cmd /k "set CUDA_VISIBLE_DEVICES=0 && set OLLAMA_NUM_GPU=999 && set OLLAMA_FLASH_ATTENTION=1 && ollama serve"
+start "Ollama Server (Hybrid Mode)" cmd /k "set CUDA_VISIBLE_DEVICES=0 && set OLLAMA_FLASH_ATTENTION=1 && set OLLAMA_MAX_LOADED_MODELS=1 && set OLLAMA_KEEP_ALIVE=10m && ollama serve"
 
 REM Esperar a que Ollama esté listo
 echo [*] Esperando a que Ollama este listo...
