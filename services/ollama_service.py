@@ -30,10 +30,11 @@ _PROFILES = {
         "num_predict": 280,
     },
     "gpu_hybrid": {
-        "num_gpu": 20,      # ~20 capas en GPU, resto en CPU → VR conserva VRAM
-        "num_thread": 4,    # 4 hilos CPU para capas restantes
-        "num_ctx": 2048,    # Contexto reducido (conversación corta)
-        "num_predict": 150, # Máximo tokens (guardrail limita a 2 frases)
+        "num_gpu": 30,      # Más capas en GPU → tokens/seg más rápido (bajar si VR lagea)
+        "num_thread": 6,    # 6 hilos CPU para las capas restantes
+        "num_ctx": 2048,    # Contexto suficiente para conversación de mercado
+        "num_predict": 150, # Tokens máximos por respuesta
+        "num_batch": 1024,  # Procesa el prompt 2x más rápido (default: 512)
     },
     "cpu_only": {
         "num_gpu": 0,       # Nada en GPU
@@ -48,6 +49,7 @@ OLLAMA_NUM_GPU = _ACTIVE_PROFILE["num_gpu"]
 OLLAMA_NUM_THREAD = _ACTIVE_PROFILE["num_thread"]
 OLLAMA_NUM_CTX = _ACTIVE_PROFILE["num_ctx"]
 OLLAMA_NUM_PREDICT = _ACTIVE_PROFILE["num_predict"]
+OLLAMA_NUM_BATCH = _ACTIVE_PROFILE.get("num_batch", 512)
 
 # ==============================
 # ESTADOS
@@ -725,8 +727,14 @@ def ollama_generate(
     history: List[Dict[str, str]],
     user_text: str,
     state: str,
-    price_tracker: Optional[PriceTracker] = None
+    price_tracker: Optional[PriceTracker] = None,
+    on_first_sentence=None
 ) -> Tuple[Optional[str], str]:
+    """
+    Genera respuesta del modelo via streaming.
+    on_first_sentence: callback(text) llamado cuando la primera frase está lista.
+                       Permite enviar texto parcial a VR sin esperar la respuesta completa.
+    """
     user_text = sanitize_text(user_text)
 
     # ESTADO FINAL → SILENCIO ABSOLUTO
@@ -757,12 +765,13 @@ def ollama_generate(
 
     payload = {
         "model": OLLAMA_MODEL,
-        "stream": False,
+        "stream": True,
         "prompt": build_prompt_with_history(history, user_text, state, price_tracker),
         "temperature": 0.85,
         "options": {
             "num_ctx": OLLAMA_NUM_CTX,
             "num_predict": OLLAMA_NUM_PREDICT,
+            "num_batch": OLLAMA_NUM_BATCH,
             "top_k": 50,
             "top_p": 0.9,
             "num_gpu": OLLAMA_NUM_GPU,
@@ -771,9 +780,36 @@ def ollama_generate(
     }
 
     try:
-        response = requests.post(OLLAMA_URL, json=payload, timeout=120)
+        import json as _json
+        response = requests.post(OLLAMA_URL, json=payload, timeout=120, stream=True)
         response.raise_for_status()
-        assistant_text = response.json().get("response", "")
+        
+        # Streaming: acumular tokens y notificar primera frase
+        assistant_text = ""
+        first_sentence_sent = False
+        for line in response.iter_lines():
+            if line:
+                try:
+                    chunk = _json.loads(line)
+                    token = chunk.get("response", "")
+                    assistant_text += token
+                    
+                    # Detectar fin de primera frase y notificar a VR
+                    if not first_sentence_sent and on_first_sentence:
+                        # Buscar fin de oración (. ? !)
+                        for end_char in ['.', '?', '!']:
+                            if end_char in assistant_text:
+                                idx = assistant_text.index(end_char) + 1
+                                first_sentence = assistant_text[:idx].strip()
+                                if len(first_sentence) > 5:
+                                    on_first_sentence(first_sentence)
+                                    first_sentence_sent = True
+                                    break
+                    
+                    if chunk.get("done", False):
+                        break
+                except _json.JSONDecodeError:
+                    continue
     except Exception as e:
         print(f"❌ Error Ollama: {e}")
         assistant_text = "Disculpe vecino, no le entendí bien. ¿Me lo repite por favor?"

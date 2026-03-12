@@ -21,7 +21,11 @@ import re
 # ====================================================================
 def is_first_run():
     cache_dir = os.path.expanduser("~/.cache/huggingface/hub")
-    return not os.path.exists(os.path.join(cache_dir, "models--Systran--faster-whisper-small"))
+    # Verificar si algún modelo whisper existe en cache
+    return not any(
+        os.path.exists(os.path.join(cache_dir, f"models--Systran--faster-whisper-{s}"))
+        for s in ["tiny", "base", "small", "medium"]
+    )
 
 if not is_first_run():
     os.environ['HF_HUB_OFFLINE'] = '1'
@@ -134,28 +138,42 @@ def load_whisper_model():
     try:
         print("🔄 Cargando Faster-Whisper...")
 
+        # ============================================================
+        # MODELO WHISPER: calidad vs velocidad
+        # Opciones: tiny < base < small < medium
+        # "small" ofrece buena precisión para español
+        # ============================================================
+        WHISPER_SIZE = "small"  # <<< CAMBIAR AQUÍ si quieres más velocidad ("base") o calidad ("medium")
+
         cache_dir = os.path.expanduser("~/.cache/huggingface/hub")
         model_local_path = os.path.join(
             cache_dir,
-            "models--Systran--faster-whisper-small",
-            "snapshots",
-            "536b0662742c02347bc0e980a01041f333bce120"
+            f"models--Systran--faster-whisper-{WHISPER_SIZE}",
+            "snapshots"
         )
 
-        if not os.path.exists(model_local_path):
-            print("📥 Primera instalación: Descargando Faster-Whisper...")
+        # Buscar snapshot existente
+        snapshot_path = None
+        if os.path.exists(model_local_path):
+            snapshots = [d for d in os.listdir(model_local_path) 
+                        if os.path.isdir(os.path.join(model_local_path, d))]
+            if snapshots:
+                snapshot_path = os.path.join(model_local_path, snapshots[0])
+
+        if snapshot_path and os.path.exists(snapshot_path):
+            WHISPER_MODEL = WhisperModel(
+                snapshot_path,
+                device="cpu",
+                compute_type="int8"
+            )
+        else:
+            print(f"📥 Primera instalación: Descargando Faster-Whisper {WHISPER_SIZE}...")
             print("⏳ Esto tomará unos minutos, solo una vez...")
             WHISPER_MODEL = WhisperModel(
-                "small",
+                WHISPER_SIZE,
                 device="cpu",
                 compute_type="int8",
                 local_files_only=False
-            )
-        else:
-            WHISPER_MODEL = WhisperModel(
-                model_local_path,
-                device="cpu",
-                compute_type="int8"
             )
 
         print("✅ Faster-Whisper cargado (100% OFFLINE)")

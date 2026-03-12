@@ -574,12 +574,17 @@ async def start_recording():
 
 
 async def process_audio_background(audio_path: str):
-    """Procesar audio en background: STT + IA + TTS + envío a VR - MEJORADO"""
+    """Procesar audio en background: STT + IA + envío a VR con streaming"""
     global conversation_history, conversation_state, latest_ai_response, price_tracker
 
     try:
+        import time as _time
+        _t0 = _time.perf_counter()
+
         print("🔄 Transcribiendo audio...")
         transcription = await asyncio.to_thread(transcribe_audio_file, audio_path)
+        _t_stt = _time.perf_counter()
+        print(f"⏱️ STT: {_t_stt - _t0:.2f}s")
 
         try:
             os.unlink(audio_path)
@@ -596,21 +601,31 @@ async def process_audio_background(audio_path: str):
         print(f"💬 Usuario: {user_text}")
         print("🤖 IA procesando...")
 
-        # NUEVO: Detectar y registrar productos del vendedor
+        # Detectar y registrar productos del vendedor
         product_price = extract_price_and_product(user_text)
         if product_price:
             product_name, price = product_price
             price_tracker.add_product(product_name, 1, price)
             print(f"📦 Producto registrado: {product_name} × 1 @ {price} COP")
 
-        # NUEVO: Pasar price_tracker a ollama_generate
+        # Callback para enviar primera frase a VR antes de que termine la generación
+        first_sentence_time = [None]
+        def on_first_sentence(partial_text):
+            first_sentence_time[0] = _time.perf_counter()
+            elapsed = first_sentence_time[0] - _t_stt
+            print(f"⚡ Primera frase lista en {elapsed:.2f}s: {partial_text[:50]}...")
+            send_text_to_vr(partial_text, False, conversation_state)
+
         ai_response, new_state = await asyncio.to_thread(
             ollama_generate,
             conversation_history,
             user_text,
             conversation_state,
-            price_tracker
+            price_tracker,
+            on_first_sentence
         )
+        _t_llm = _time.perf_counter()
+        print(f"⏱️ LLM total: {_t_llm - _t_stt:.2f}s")
 
         conversation_state = new_state
 
@@ -623,8 +638,6 @@ async def process_audio_background(audio_path: str):
 
             print(f"🤖 Cliente: {ai_response}")
 
-            # TTS deshabilitado para producción
-
             conversation_finished = conversation_state == STATE_FINISHED
 
             latest_ai_response = {
@@ -633,8 +646,10 @@ async def process_audio_background(audio_path: str):
                 "conversation_finished": conversation_finished,
                 "has_response": True
             }
-            print("✅ Respuesta guardada para polling")
+            print("✅ Respuesta completa guardada para polling")
+            print(f"⏱️ TOTAL pipeline: {_time.perf_counter() - _t0:.2f}s")
 
+            # Enviar respuesta completa a VR (reemplaza la parcial)
             await send_text_to_vr_async(ai_response, conversation_finished, conversation_state)
 
     except Exception as e:
