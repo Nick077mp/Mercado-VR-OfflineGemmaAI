@@ -28,15 +28,16 @@ if %ERRORLEVEL% EQU 0 (
 )
 
 REM ==========================================
-REM FORZAR MODO CPU - Liberar VRAM para VR
+REM MODO GPU - Usar solo GPU para inferencia
 REM ==========================================
-set CUDA_VISIBLE_DEVICES=
-set OLLAMA_NUM_GPU=0
-echo [*] Modo CPU activado (GPU libre para VR)
+set CUDA_VISIBLE_DEVICES=0
+set OLLAMA_NUM_GPU=999
+set OLLAMA_FLASH_ATTENTION=1
+echo [*] Modo GPU activado (solo GPU)
 echo.
 
 echo [*] Iniciando Ollama...
-start "Ollama Server (CPU Mode)" cmd /k "set CUDA_VISIBLE_DEVICES= && set OLLAMA_NUM_GPU=0 && ollama serve"
+start "Ollama Server (GPU Mode)" cmd /k "set CUDA_VISIBLE_DEVICES=0 && set OLLAMA_NUM_GPU=999 && set OLLAMA_FLASH_ATTENTION=1 && ollama serve"
 
 REM Esperar a que Ollama esté listo
 echo [*] Esperando a que Ollama este listo...
