@@ -1,829 +1,841 @@
+"""Conversation engine for the AI voice marketplace negotiation assistant.
+
+Manages the full negotiation lifecycle: state machine, price tracking,
+prompt construction, guardrails and Ollama LLM streaming.
+"""
+
+import json
 import re
+from typing import Callable, Dict, List, Optional, Tuple
+
 import requests
-from typing import List, Dict, Optional, Tuple
 
-# ==============================
-# CONFIGURACIÓN
-# ==============================
-OLLAMA_URL = "http://localhost:11434/api/generate"
-OLLAMA_MODEL = "gemma3:4b"
-MAX_HISTORY = 20
-MAX_PRODUCTS = 5  # Límite de productos por compra
+# ---------------------------------------------------------------------------
+# Configuration
+# ---------------------------------------------------------------------------
 
-# ==============================
-# PERFILES DE RENDIMIENTO GPU/CPU
-# ==============================
-# Elige un perfil según tu hardware:
-#
-# "gpu_full"   → Todo en GPU (rápido, pero pelea con VR por VRAM)
-# "gpu_hybrid" → Capas parciales en GPU (RECOMENDADO con VR)
-# "cpu_only"   → Todo en CPU (sin conflicto GPU, más lento)
-#
-# Para VR en producción: usar "gpu_hybrid"
-PERFORMANCE_PROFILE = "gpu_hybrid"  # <<< CAMBIAR AQUÍ
+OLLAMA_URL: str = "http://localhost:11434/api/generate"
+OLLAMA_MODEL: str = "gemma3:4b"
 
-_PROFILES = {
+PERFORMANCE_PROFILES: Dict[str, Dict] = {
     "gpu_full": {
-        "num_gpu": 999,     # Todas las capas en GPU
-        "num_thread": 1,    # Mínimo CPU
+        "num_gpu": 999,
+        "num_thread": 1,
         "num_ctx": 4096,
         "num_predict": 280,
     },
     "gpu_hybrid": {
-        "num_gpu": 30,      # Más capas en GPU → tokens/seg más rápido (bajar si VR lagea)
-        "num_thread": 6,    # 6 hilos CPU para las capas restantes
-        "num_ctx": 2048,    # Contexto suficiente para conversación de mercado
-        "num_predict": 150, # Tokens máximos por respuesta
-        "num_batch": 1024,  # Procesa el prompt 2x más rápido (default: 512)
+        "num_gpu": 30,
+        "num_thread": 6,
+        "num_ctx": 2048,
+        "num_predict": 150,
+        "num_batch": 1024,
     },
     "cpu_only": {
-        "num_gpu": 0,       # Nada en GPU
-        "num_thread": 6,    # 6 hilos CPU
+        "num_gpu": 0,
+        "num_thread": 6,
         "num_ctx": 2048,
         "num_predict": 150,
     },
 }
 
-_ACTIVE_PROFILE = _PROFILES[PERFORMANCE_PROFILE]
-OLLAMA_NUM_GPU = _ACTIVE_PROFILE["num_gpu"]
-OLLAMA_NUM_THREAD = _ACTIVE_PROFILE["num_thread"]
-OLLAMA_NUM_CTX = _ACTIVE_PROFILE["num_ctx"]
-OLLAMA_NUM_PREDICT = _ACTIVE_PROFILE["num_predict"]
-OLLAMA_NUM_BATCH = _ACTIVE_PROFILE.get("num_batch", 512)
+# Change to switch profiles: "gpu_full" | "gpu_hybrid" | "cpu_only"
+ACTIVE_PROFILE_NAME: str = "gpu_hybrid"
 
-# ==============================
-# ESTADOS
-# ==============================
-STATE_NEGOTIATING = "NEGOTIATING"
-STATE_BUILDING_ORDER = "BUILDING_ORDER"
-STATE_READY_TO_PAY = "READY_TO_PAY"
-STATE_PAYMENT = "PAYMENT_REQUESTED"
-STATE_FINISHED = "FINISHED"
+# ---------------------------------------------------------------------------
+# Conversation states
+# ---------------------------------------------------------------------------
 
-# ==============================
-# PRICE TRACKER - VALIDACIÓN DE TOTALES (NUEVO)
-# ==============================
-class PriceTracker:
-    """Rastrea productos, precios y valida totales."""
-    
-    def __init__(self):
-        self.products = {}  # {"producto": {"quantity": 2, "price": 3500}}
-        self.total_calculated = 0
-    
-    def add_product(self, name: str, quantity: int, price: int):
-        """Agrega o actualiza un producto."""
-        self.products[name.lower()] = {
-            "quantity": quantity,
-            "price": price,
-            "subtotal": quantity * price
-        }
-        self._recalculate_total()
-    
-    def _recalculate_total(self):
-        """Recalcula el total."""
-        self.total_calculated = sum(
-            p["quantity"] * p["price"] 
-            for p in self.products.values()
-        )
-    
-    def validate_seller_total(self, seller_total: int) -> Dict:
-        """Valida que el total del vendedor sea correcto."""
-        if self.total_calculated == seller_total:
-            return {
-                "valid": True,
-                "correct_total": self.total_calculated,
-                "difference": 0
-            }
-        else:
-            return {
-                "valid": False,
-                "correct_total": self.total_calculated,
-                "seller_total": seller_total,
-                "difference": seller_total - self.total_calculated,
-                "alert": f"⚠️ DISCREPANCIA: Total correcto {self.total_calculated}, "
-                        f"vendedor dice {seller_total} (diferencia: {seller_total - self.total_calculated})"
-            }
-    
-    def get_summary(self) -> str:
-        """Retorna resumen de la compra para validación."""
-        if not self.products:
-            return "Sin productos registrados"
-        
-        lines = []
-        for name, data in self.products.items():
-            lines.append(f"- {name}: {data['quantity']} × {data['price']} = {data['subtotal']}")
-        lines.append(f"TOTAL: {self.total_calculated}")
-        return "\n".join(lines)
+STATE_NEGOTIATING: str = "NEGOTIATING"
+STATE_BUILDING_ORDER: str = "BUILDING_ORDER"
+STATE_READY_TO_PAY: str = "READY_TO_PAY"
+STATE_PAYMENT: str = "PAYMENT_REQUESTED"
+STATE_FINISHED: str = "FINISHED"
+
+MAX_HISTORY: int = 20
+MAX_PRODUCTS: int = 5
 
 
-# ==============================
-# FUNCIONES DE DETECCIÓN (NUEVO)
-# ==============================
+# ---------------------------------------------------------------------------
+# Shared utilities
+# ---------------------------------------------------------------------------
+
+def sanitize_text(text: Optional[str]) -> str:
+    """Strip whitespace; return empty string for ``None``."""
+    return text.strip() if text else ""
+
+
+def trim_history(history: List[Dict[str, str]]) -> List[Dict[str, str]]:
+    """Keep only the last *MAX_HISTORY* messages."""
+    return history[-MAX_HISTORY:] if len(history) > MAX_HISTORY else history
+
+
+# ---------------------------------------------------------------------------
+# Price / product detection (module-level, reusable)
+# ---------------------------------------------------------------------------
+
 def extract_price_and_product(text: str) -> Optional[Tuple[str, int]]:
-    """
-    Extrae producto y precio de un mensaje del vendedor.
-    Ejemplo: "Aguacate a 3500 pesos" → ("aguacate", 3500)
+    """Extract product name and price from a seller message.
+
+    Example: ``"Aguacate a 3500 pesos"`` -> ``("aguacate", 3500)``
     """
     t = text.lower()
-    
-    # Patrones para extraer precio
-    price_pattern = r"(?:(?:\$)\s*)?(?:(?:\d{1,3}(?:[.,]\d{3})+)|(?:\d+))(?:\s*(?:pesos|cop))?"
+
+    price_pattern = (
+        r"(?:(?:\$)\s*)?"
+        r"(?:(?:\d{1,3}(?:[.,]\d{3})+)|(?:\d+))"
+        r"(?:\s*(?:pesos|cop))?"
+    )
     prices = re.findall(price_pattern, t)
-    
+
     if not prices:
-        # Buscar "X mil"
-        mil_pattern = r"(\d+)\s*mil"
-        mil_matches = re.findall(mil_pattern, t)
+        mil_matches = re.findall(r"(\d+)\s*mil", t)
         if mil_matches:
             prices = [str(int(m) * 1000) for m in mil_matches]
-    
+
     if not prices:
         return None
-    
-    # Extraer el precio (el primero mencionado)
+
     price_str = prices[0].replace(".", "").replace(",", "")
     try:
         price = int(price_str)
     except ValueError:
         return None
-    
-    # Extraer producto (palabra antes del precio)
-    product_pattern = r"(\w+)\s+(?:a\s+)?(?:en\s+)?(?:\$\s*)?(?:\d+)"
-    matches = re.findall(product_pattern, t)
-    
+
+    matches = re.findall(r"(\w+)\s+(?:a\s+)?(?:en\s+)?(?:\$\s*)?(?:\d+)", t)
     if matches:
         product = matches[0].lower()
-        # Filtrar palabras que no son productos
         ignore = {"el", "la", "los", "las", "un", "una", "unos", "unas", "tengo", "tiene"}
         if product not in ignore:
             return (product, price)
-    
+
     return None
 
 
 def detect_seller_total(text: str) -> Optional[int]:
-    """
-    Detecta cuando el vendedor anuncia el total.
-    Ejemplo: "El total sería 42 mil pesos" → 42000
+    """Detect when the seller announces a total.
+
+    Example: ``"El total sería 42 mil pesos"`` -> ``42000``
     """
     t = text.lower()
-    
-    # Patrones que indican total
     if "total" not in t and "serían" not in t and "sería" not in t:
         return None
-    
-    # Buscar número
-    mil_pattern = r"(\d+)\s*mil"
-    mil_matches = re.findall(mil_pattern, t)
+
+    mil_matches = re.findall(r"(\d+)\s*mil", t)
     if mil_matches:
         return int(mil_matches[0]) * 1000
-    
-    price_pattern = r"(?:\$\s*)?(\d+(?:[.,]\d{3})+|\d+)(?:\s*pesos)?"
-    price_matches = re.findall(price_pattern, t)
+
+    price_matches = re.findall(
+        r"(?:\$\s*)?(\d+(?:[.,]\d{3})+|\d+)(?:\s*pesos)?", t,
+    )
     if price_matches:
         price_str = price_matches[0].replace(".", "").replace(",", "")
         try:
             return int(price_str)
         except ValueError:
             pass
-    
+
     return None
 
 
-# ==============================
-# ELIMINADOR DE REPETICIONES (NUEVO)
-# ==============================
-_GREETING_PATTERN = re.compile(
-    r"\b(buenos\s+días|buenas\s+tardes|buenas\s+noches|hola)\b",
-    re.IGNORECASE
-)
+# ---------------------------------------------------------------------------
+# PriceTracker
+# ---------------------------------------------------------------------------
 
-_GREETING_REPLACEMENTS = [
-    "Claro", "Perfecto", "Entiendo", "Muy bien", "De acuerdo",
-    "Está bien", "Excelente", "Dale", "Listo"
-]
+class PriceTracker:
+    """Tracks products, quantities, prices and validates seller totals."""
+
+    def __init__(self) -> None:
+        self.products: Dict[str, Dict[str, int]] = {}
+        self.total_calculated: int = 0
+
+    def add_product(self, name: str, quantity: int, price: int) -> None:
+        self.products[name.lower()] = {
+            "quantity": quantity,
+            "price": price,
+            "subtotal": quantity * price,
+        }
+        self._recalculate()
+
+    def _recalculate(self) -> None:
+        self.total_calculated = sum(
+            p["quantity"] * p["price"] for p in self.products.values()
+        )
+
+    def validate_seller_total(self, seller_total: int) -> Dict:
+        if self.total_calculated == seller_total:
+            return {"valid": True, "correct_total": self.total_calculated, "difference": 0}
+        return {
+            "valid": False,
+            "correct_total": self.total_calculated,
+            "seller_total": seller_total,
+            "difference": seller_total - self.total_calculated,
+            "alert": (
+                f"Discrepancy: correct={self.total_calculated}, "
+                f"seller={seller_total}, diff={seller_total - self.total_calculated}"
+            ),
+        }
+
+    def get_summary(self) -> str:
+        if not self.products:
+            return "No products registered"
+        lines = [
+            f"- {n}: {d['quantity']} x {d['price']} = {d['subtotal']}"
+            for n, d in self.products.items()
+        ]
+        lines.append(f"TOTAL: {self.total_calculated}")
+        return "\n".join(lines)
 
 
-def _remove_repeated_greetings(text: str) -> str:
+# ---------------------------------------------------------------------------
+# ConversationEngine
+# ---------------------------------------------------------------------------
+
+class ConversationEngine:
+    """Orchestrates the full conversation lifecycle with the LLM.
+
+    Encapsulates state machine, price tracking, prompt construction,
+    Ollama streaming, guardrails and greeting deduplication.
     """
-    Elimina o reemplaza saludos repetidos en la misma respuesta.
-    Ejemplo: "Buenos días. Buenos días. ¿Cómo estás?" 
-    → "Buenos días. Claro. ¿Cómo estás?"
-    """
-    greetings = _GREETING_PATTERN.findall(text)
-    
-    if len(greetings) <= 1:
-        return text
-    
-    # Si hay múltiples saludos, reemplazar los posteriores
-    result = text
-    greeting_count = 0
-    
-    def replace_greeting(match):
-        nonlocal greeting_count
-        greeting_count += 1
-        if greeting_count == 1:
-            return match.group(0)  # Mantener el primero
-        else:
-            # Reemplazar con variante
-            replacement = _GREETING_REPLACEMENTS[greeting_count % len(_GREETING_REPLACEMENTS)]
-            return replacement
-    
-    result = _GREETING_PATTERN.sub(replace_greeting, result)
-    return result
 
+    # -- Compiled regex patterns --
 
-# ==============================
-# SYSTEM PROMPT - MEJORADO
-# ==============================
-SYSTEM_PROMPT = """
-Eres José, un campesino colombiano que compra en la plaza de mercado. Hablas con naturalidad, tranquilo y educado.
-
-COMPORTAMIENTO:
-- Eres conversador: haces preguntas genuinas sobre calidad, frescura y origen de productos
-- Mantienes una lista mental clara de productos y precios (sin inventar datos)
-- Eres proactivo: confirmas el total antes de pagar, verificando que coincida con lo acordado
-- Hablas de forma fluida y natural, sin repetir lo ya dicho
-
-NEGOCIACIÓN DE PRECIOS:
-- Cuando el vendedor menciona un precio por primera vez, SIEMPRE pides un pequeño descuento de forma amable
-- Usas frases naturales como: "¿Me lo deja en X?", "¿Y si me rebaja un poquito?", "¿No me hace una rebajita?"
-- Propones un precio 10-20% menor al ofrecido (ejemplo: si dice 10 mil, ofreces 8 mil)
-- Si el vendedor rechaza, puedes intentar UNA vez más con un precio intermedio
-- Si rechaza dos veces, aceptas el precio sin insistir más
-- Negocias con respeto, sin ser agresivo ni grosero
-
-RESTRICCIONES MATEMÁTICAS:
-- Solo suma precios que el vendedor haya confirmado explícitamente
-- Si no conoces un precio exacto, pregunta antes de asumir
-- Verifica mentalmente: cantidad × precio = subtotal
-- Nunca inventes números ni precios que no se hayan mencionado
-- Si hay dudas en el cálculo, pide que el vendedor confirme
-
-CONVERSACIÓN NATURAL:
-- NO repitas "Buenos días/tardes" en cada respuesta
-- Varía: "Claro", "Perfecto", "Entiendo", "Muy bien", "Excelente"
-- Haz preguntas específicas: "¿Cuántos necesitas?", "¿Algo más?"
-- Sugiere productos: "¿Necesitas papas, cebolla, algo más?"
-- Pregunta preferencias: "¿Los prefieres bien maduros?"
-- Cuando el vendedor dé precio, pregunta cantidad: "¿Cuántos/cuántos kilos?"
-
-LÍMITES DE COMPRA:
-- Compras entre 3 y 5 productos máximo
-- Cuando tengas suficientes, dices "con eso está bien" o similar
-- Siempre eres el COMPRADOR, nunca vendes
-- Usas pesos colombianos (COP)
-
-GESTIÓN DE CONTEXTO:
-- Recuerda solo lo que se ha dicho en esta conversación
-- No repitas preguntas o comentarios anteriores
-- Mantén coherencia con lo ya acordado
-- Cuando pagas, te despides y la conversación termina
-"""
-
-# ==============================
-# INSTRUCCIONES POR ESTADO
-# ==============================
-STATE_INSTRUCTIONS = {
-    STATE_NEGOTIATING: """
-🔹 ESTADO: NEGOCIACIÓN ACTIVA
-Comportamiento OBLIGATORIO:
-- Cuando el vendedor dice un precio, DEBES pedir rebaja antes de aceptar
-- Propón un precio 10-20% menor: si dice 10 mil, ofrece 8 mil o 8500
-- Usa frases amables: "¿Me lo deja en X?", "¿No me rebaja un poquito?", "¿Y en X me lo da?"
-- Si te rechazan, intenta UNA vez más con precio intermedio
-- Si rechazan 2 veces, acepta con frase como "Bueno, está bien, me lo llevo"
-- NUNCA aceptes el primer precio sin intentar negociar
-- Puedes preguntar por otros productos mientras negocias
-Ejemplos de negociación:
-- Vendedor: "La docena a 10 mil" → Tú: "¿Me la deja en 8 mil?"
-- Vendedor: "El kilo a 15 mil" → Tú: "¿Y en 12 mil me lo da?"
-- Vendedor: "No puedo" → Tú: "¿Y en 9 mil entonces?" (intento 2)
-    """,
-    
-    STATE_BUILDING_ORDER: """
-🔹 ESTADO: ARMANDO PEDIDO - COMPRANDO MÁS PRODUCTOS
-Comportamiento:
-- El precio de productos anteriores YA ESTÁ ACEPTADO Y CERRADO
-- NO vuelvas a negociar precios que ya aceptaste
-- Pregunta por otros productos que quieras comprar
-- Lleva la cuenta de cuántos productos has pedido (máximo 5 en total)
-- NO repitas productos que ya pediste
-- Puedes negociar el precio de NUEVOS productos solamente
-- Cuando tengas entre 3 y 5 productos, procede al pago diciendo "con eso es todo"
-- Si el vendedor pregunta qué llevas, LISTA todos los productos que has pedido
-Ejemplo: "¿Qué más tiene?" o "¿Tiene cebollas?" o "Con eso es todo, ¿cuánto sería?"
-    """,
-    
-    STATE_READY_TO_PAY: """
-🔹 ESTADO: LISTO PARA PAGAR
-Comportamiento:
-- Suma mentalmente el total de tu pedido y compáralo con el precio que te da el vendedor
-- Ya aceptaste todos los precios y decidiste comprar
-- NO vuelvas a pedir descuentos ni a negociar
-- Solo confirma el total y pregunta cómo pagar
-- Mantén tu decisión de compra firme
-Ejemplo: "Listo, ¿cómo pago?" o "Perfecto, ¿me genera el cobro?"
-    """,
-    
-    STATE_FINISHED: """
-🔹 ESTADO: CONVERSACIÓN TERMINADA
-- Ya pagaste y te despediste
-- No respondas más mensajes
-    """
-}
-
-# ==============================
-# UTILIDADES
-# ==============================
-def sanitize_text(text: Optional[str]) -> str:
-    return text.strip() if text else ""
-
-def trim_history(history: List[Dict[str, str]]) -> List[Dict[str, str]]:
-    return history[-MAX_HISTORY:] if len(history) > MAX_HISTORY else history
-
-# ==============================
-# CONTEO Y TRACKING DE PRODUCTOS
-# ==============================
-def count_products_purchased(history: List[Dict[str, str]]) -> int:
-    """
-    Cuenta productos comprados analizando el historial.
-    Busca patrones de compra en mensajes del comprador (assistant).
-    """
-    products = extract_product_list(history)
-    return len(products)
-
-def extract_product_list(history: List[Dict[str, str]]) -> List[str]:
-    """
-    Extrae nombres de productos mencionados por el comprador en el historial.
-    """
-    products = set()
-    
-    # Patrones de compra del comprador
-    buy_patterns = [
-        r"\b(?:me\s+da|deme|déme|quiero|llevo|me\s+llevo|necesito|dame|también)\s+(?:\d+\s+)?(?:kilos?\s+de\s+|libras?\s+de\s+|libra\s+de\s+)?(\w+)",
-        r"\b(?:tiene|hay)\s+(\w+)",
-        r"\b(\w+)\s+(?:a\s+cuánto|a\s+como|cuánto\s+vale|cuánto\s+cuesta)",
+    _COP_AMOUNT_RE = re.compile(
+        r"(?:(?:\$)\s*)?"
+        r"(?:(?:\d{1,3}(?:[.,]\d{3})+)|(?:\d+))"
+        r"(?:\s*(?:pesos|cop))?"
+        r"|\b\d+\s*mil\b",
+        re.IGNORECASE,
+    )
+    _NEGATION_RE = re.compile(r"\b(no|nunca|jam[aá]s|sin)\b", re.IGNORECASE)
+    _GREETING_RE = re.compile(
+        r"\b(buenos\s+días|buenas\s+tardes|buenas\s+noches|hola)\b",
+        re.IGNORECASE,
+    )
+    _GREETING_ALTS: List[str] = [
+        "Claro", "Perfecto", "Entiendo", "Muy bien", "De acuerdo",
+        "Está bien", "Excelente", "Dale", "Listo",
     ]
-    
-    # Palabras a ignorar (no son productos)
-    ignore_words = {
-        "usted", "algo", "más", "mas", "todo", "eso", "nada", "favor",
-        "precio", "plata", "pesos", "cobro", "pago", "total", "cuenta",
-        "bien", "bueno", "listo", "dale", "gracias", "señor", "vecino",
-        "qué", "que", "cómo", "como", "cuánto", "cuanto", "también",
-        "el", "la", "los", "las", "un", "una", "unos", "unas",
+
+    # -- System prompt --
+
+    _SYSTEM_PROMPT: str = (
+        "Eres José, un campesino colombiano que compra en la plaza de mercado. "
+        "Hablas con naturalidad, tranquilo y educado.\n\n"
+        "COMPORTAMIENTO:\n"
+        "- Eres conversador: haces preguntas genuinas sobre calidad, frescura y origen de productos\n"
+        "- Mantienes una lista mental clara de productos y precios (sin inventar datos)\n"
+        "- Eres proactivo: confirmas el total antes de pagar, verificando que coincida con lo acordado\n"
+        "- Hablas de forma fluida y natural, sin repetir lo ya dicho\n\n"
+        "NEGOCIACIÓN DE PRECIOS:\n"
+        "- Cuando el vendedor menciona un precio por primera vez, SIEMPRE pides un pequeño descuento de forma amable\n"
+        "- Usas frases naturales como: \"¿Me lo deja en X?\", \"¿Y si me rebaja un poquito?\", \"¿No me hace una rebajita?\"\n"
+        "- Propones un precio 10-20% menor al ofrecido (ejemplo: si dice 10 mil, ofreces 8 mil)\n"
+        "- Si el vendedor rechaza, puedes intentar UNA vez más con un precio intermedio\n"
+        "- Si rechaza dos veces, aceptas el precio sin insistir más\n"
+        "- Negocias con respeto, sin ser agresivo ni grosero\n\n"
+        "RESTRICCIONES MATEMÁTICAS:\n"
+        "- Solo suma precios que el vendedor haya confirmado explícitamente\n"
+        "- Si no conoces un precio exacto, pregunta antes de asumir\n"
+        "- Verifica mentalmente: cantidad × precio = subtotal\n"
+        "- Nunca inventes números ni precios que no se hayan mencionado\n"
+        "- Si hay dudas en el cálculo, pide que el vendedor confirme\n\n"
+        "CONVERSACIÓN NATURAL:\n"
+        "- NO repitas \"Buenos días/tardes\" en cada respuesta\n"
+        "- Varía: \"Claro\", \"Perfecto\", \"Entiendo\", \"Muy bien\", \"Excelente\"\n"
+        "- Haz preguntas específicas: \"¿Cuántos necesitas?\", \"¿Algo más?\"\n"
+        "- Sugiere productos: \"¿Necesitas papas, cebolla, algo más?\"\n"
+        "- Pregunta preferencias: \"¿Los prefieres bien maduros?\"\n"
+        "- Cuando el vendedor dé precio, pregunta cantidad: \"¿Cuántos/cuántos kilos?\"\n\n"
+        "LÍMITES DE COMPRA:\n"
+        "- Compras entre 3 y 5 productos máximo\n"
+        "- Cuando tengas suficientes, dices \"con eso está bien\" o similar\n"
+        "- Siempre eres el COMPRADOR, nunca vendes\n"
+        "- Usas pesos colombianos (COP)\n\n"
+        "GESTIÓN DE CONTEXTO:\n"
+        "- Recuerda solo lo que se ha dicho en esta conversación\n"
+        "- No repitas preguntas o comentarios anteriores\n"
+        "- Mantén coherencia con lo ya acordado\n"
+        "- Cuando pagas, te despides y la conversación termina"
+    )
+
+    # -- State-specific instructions --
+
+    _STATE_INSTRUCTIONS: Dict[str, str] = {
+        STATE_NEGOTIATING: (
+            "ESTADO: NEGOCIACIÓN ACTIVA\n"
+            "Comportamiento OBLIGATORIO:\n"
+            "- Cuando el vendedor dice un precio, DEBES pedir rebaja antes de aceptar\n"
+            "- Propón un precio 10-20% menor: si dice 10 mil, ofrece 8 mil o 8500\n"
+            "- Usa frases amables: \"¿Me lo deja en X?\", \"¿No me rebaja un poquito?\", "
+            "\"¿Y en X me lo da?\"\n"
+            "- Si te rechazan, intenta UNA vez más con precio intermedio\n"
+            "- Si rechazan 2 veces, acepta con frase como \"Bueno, está bien, me lo llevo\"\n"
+            "- NUNCA aceptes el primer precio sin intentar negociar\n"
+            "- Puedes preguntar por otros productos mientras negocias\n"
+            "Ejemplos de negociación:\n"
+            "- Vendedor: \"La docena a 10 mil\" → Tú: \"¿Me la deja en 8 mil?\"\n"
+            "- Vendedor: \"El kilo a 15 mil\" → Tú: \"¿Y en 12 mil me lo da?\"\n"
+            "- Vendedor: \"No puedo\" → Tú: \"¿Y en 9 mil entonces?\" (intento 2)"
+        ),
+        STATE_BUILDING_ORDER: (
+            "ESTADO: ARMANDO PEDIDO - COMPRANDO MÁS PRODUCTOS\n"
+            "Comportamiento:\n"
+            "- El precio de productos anteriores YA ESTÁ ACEPTADO Y CERRADO\n"
+            "- NO vuelvas a negociar precios que ya aceptaste\n"
+            "- Pregunta por otros productos que quieras comprar\n"
+            "- Lleva la cuenta de cuántos productos has pedido (máximo 5 en total)\n"
+            "- NO repitas productos que ya pediste\n"
+            "- Puedes negociar el precio de NUEVOS productos solamente\n"
+            "- Cuando tengas entre 3 y 5 productos, procede al pago diciendo "
+            "\"con eso es todo\"\n"
+            "- Si el vendedor pregunta qué llevas, LISTA todos los productos que has pedido\n"
+            "Ejemplo: \"¿Qué más tiene?\" o \"¿Tiene cebollas?\" o "
+            "\"Con eso es todo, ¿cuánto sería?\""
+        ),
+        STATE_READY_TO_PAY: (
+            "ESTADO: LISTO PARA PAGAR\n"
+            "Comportamiento:\n"
+            "- Suma mentalmente el total de tu pedido y compáralo con el precio "
+            "que te da el vendedor\n"
+            "- Ya aceptaste todos los precios y decidiste comprar\n"
+            "- NO vuelvas a pedir descuentos ni a negociar\n"
+            "- Solo confirma el total y pregunta cómo pagar\n"
+            "- Mantén tu decisión de compra firme\n"
+            "Ejemplo: \"Listo, ¿cómo pago?\" o \"Perfecto, ¿me genera el cobro?\""
+        ),
+        STATE_FINISHED: (
+            "ESTADO: CONVERSACIÓN TERMINADA\n"
+            "- Ya pagaste y te despediste\n"
+            "- No respondas más mensajes"
+        ),
     }
-    
-    for msg in history:
-        if msg["role"] == "assistant":  # Solo mensajes del comprador (bot)
-            text = msg["content"].lower()
-            for pattern in buy_patterns:
-                matches = re.findall(pattern, text, re.IGNORECASE)
-                for match in matches:
-                    word = match.strip().lower()
-                    if word and len(word) > 2 and word not in ignore_words:
-                        products.add(word)
-    
-    return list(products)
 
-def seller_asks_what_to_buy(text: str) -> bool:
-    """
-    Detecta cuando el vendedor pregunta qué productos se lleva el comprador.
-    """
-    t = text.lower()
-    patterns = [
-        r"\bqu[eé]\s+(se\s+)?lleva",
-        r"\bqu[eé]\s+le\s+(empaco|alisto)",
-        r"\bqu[eé]\s+m[aá]s\s+le\s+(doy|empaco)",
-        r"\bqu[eé]\s+productos",
-        r"\bqu[eé]\s+necesita",
-        r"\balgo\s+m[aá]s",
-        r"\bnecesita\s+algo\s+m[aá]s",
-    ]
-    for p in patterns:
-        if re.search(p, t, re.IGNORECASE):
-            return True
-    return False
+    # ------------------------------------------------------------------
+    # Construction
+    # ------------------------------------------------------------------
 
-# ==============================
-# DETECCIÓN (REGEX / HEURÍSTICAS)
-# ==============================
+    def __init__(self, profile_name: str = ACTIVE_PROFILE_NAME) -> None:
+        self.history: List[Dict[str, str]] = []
+        self.state: str = STATE_NEGOTIATING
+        self.price_tracker: PriceTracker = PriceTracker()
 
-_COP_AMOUNT_RE = re.compile(
-    r"(?:(?:\$)\s*)?"
-    r"(?:(?:\d{1,3}(?:[.,]\d{3})+)|(?:\d+))"
-    r"(?:\s*(?:pesos|cop))?" 
-    r"|\b\d+\s*mil\b",
-    re.IGNORECASE
-)
+        profile = PERFORMANCE_PROFILES[profile_name]
+        self._num_gpu: int = profile["num_gpu"]
+        self._num_thread: int = profile["num_thread"]
+        self._num_ctx: int = profile["num_ctx"]
+        self._num_predict: int = profile["num_predict"]
+        self._num_batch: int = profile.get("num_batch", 512)
 
-_NEGATION_RE = re.compile(r"\b(no|nunca|jam[aá]s|sin)\b", re.IGNORECASE)
+    # ------------------------------------------------------------------
+    # Public API
+    # ------------------------------------------------------------------
 
-def _has_cop_amount(text: str) -> bool:
-    return bool(_COP_AMOUNT_RE.search(text))
+    def process_message(
+        self,
+        user_text: str,
+        on_first_sentence: Optional[Callable[[str], None]] = None,
+    ) -> Tuple[Optional[str], str]:
+        """Full pipeline: sanitize -> detect prices -> generate -> update state.
 
-def seller_asks_payment(text: str) -> bool:
-    """Detecta pregunta/invitación de pago del vendedor."""
-    t = text.lower()
+        Returns ``(response_text, current_state)``.
+        *response_text* is ``None`` when the conversation is finished.
+        """
+        text = sanitize_text(user_text)
+        if not text:
+            return None, self.state
 
-    if _NEGATION_RE.search(t) and any(k in t for k in ["qr", "transferencia", "efectivo", "tarjeta"]):
-        pass
+        # Register products/prices mentioned by the seller
+        product_info = extract_price_and_product(text)
+        if product_info:
+            name, price = product_info
+            self.price_tracker.add_product(name, 1, price)
+            print(f"[LLM] Product registered: {name} x1 @ {price} COP")
 
-    patterns = [
-        r"\b(c[oó]mo|con qu[eé]|de qu[eé] manera)\b.*\b(paga|pagar|desea pagar|va a pagar)\b",
-        r"\b(m[eé]todo|forma)\s+de\s+pago\b",
-        r"\b(es|ser[ií]a)\b.*\b(efectivo|qr|transferencia|tarjeta)\b.*\b(o)\b",
-        r"\b(efectivo)\s+o\s+(mediante\s+)?\b(qr|transferencia|tarjeta)\b",
-        r"\b(le)\s+recibo\b.*\b(efectivo|qr|transferencia|tarjeta)\b",
-        r"\b(desea|quiere|va\s+a)\s+pagar\b.*\b(efectivo|qr|transferencia|tarjeta)\b.*\b(o)\b",
-    ]
-    for p in patterns:
-        if re.search(p, t, re.IGNORECASE):
-            if "?" in t or "pagar" in t or "paga" in t or "recibo" in t or "metodo" in t or "método" in t:
-                return True
+        # Generate LLM response
+        response = self._generate(text, on_first_sentence)
 
-    if re.search(r"\b(c[oó]mo\s+desea\s+pagar|c[oó]mo\s+va\s+a\s+pagar)\b", t):
-        return True
+        # Update history
+        if response:
+            self.history.extend([
+                {"role": "user", "content": text},
+                {"role": "assistant", "content": response},
+            ])
+            self.history = trim_history(self.history)
 
-    return False
+        return response, self.state
 
-def seller_confirms_price(text: str) -> bool:
-    """Detecta confirmación/cierre del precio."""
-    t = text.lower()
+    def reset(self) -> None:
+        """Reset conversation to initial state."""
+        self.history.clear()
+        self.state = STATE_NEGOTIATING
+        self.price_tracker = PriceTracker()
 
-    if "precio por" in t or "por el kilo" in t or "por kilo" in t:
-        return False
+    # ------------------------------------------------------------------
+    # Core generation
+    # ------------------------------------------------------------------
 
-    closing_markers = [
-        "listo", "de una", "perfecto", "quedamos", "queda en", "le queda en",
-        "entonces serían", "serían en total", "en total", "total sería", "confirmado",
-        "dale", "hágale", "hagale", "dejémoslo", "dejamos", "lo dejo", "se lo dejo"
-    ]
+    def _generate(
+        self,
+        user_text: str,
+        on_first_sentence: Optional[Callable[[str], None]] = None,
+    ) -> Optional[str]:
+        """Generate a response from Ollama with streaming."""
 
-    has_close = any(m in t for m in closing_markers)
-    has_amount = _has_cop_amount(t) or ("total" in t and any(ch.isdigit() for ch in t))
+        # Terminal state
+        if self.state == STATE_FINISHED:
+            print("[LLM] State FINISHED — no response generated")
+            return None
 
-    return bool(has_close and has_amount)
+        # Seller asks for payment -> controlled response, end conversation
+        if self._seller_asks_payment(user_text):
+            print("[LLM] Payment request detected — finishing conversation")
+            self.state = STATE_FINISHED
+            return self._payment_response()
 
-def buyer_wants_more_products(text: str) -> bool:
-    """Detecta si el comprador quiere comprar más productos."""
-    t = text.lower()
-    more_shopping_phrases = [
-        "qué más", "que mas", "algo más", "algo mas", "también quiero",
-        "y dame", "y me da", "necesito", "tiene", "hay",
-        "¿qué tiene", "que tiene", "¿me da", "me da"
-    ]
-    return any(phrase in t for phrase in more_shopping_phrases)
+        # Product limit reached
+        if self.state == STATE_BUILDING_ORDER:
+            count = self._count_products(self.history)
+            if count >= MAX_PRODUCTS:
+                print(f"[LLM] Product limit reached ({count}/{MAX_PRODUCTS})")
+                self.state = STATE_READY_TO_PAY
+                return self._ready_to_pay_response()
 
-def buyer_ready_to_pay(text: str) -> bool:
-    """Detecta si el comprador está listo para proceder al pago."""
-    t = text.lower()
-    payment_ready_phrases = [
-        "eso es todo", "nada más", "solo eso", "con eso",
-        "con eso es todo", "generar el cobro", "cómo pago", "como pago",
-        "listo entonces", "ya está", "ya esta", "perfecto", "dele"
-    ]
-    return any(phrase in t for phrase in payment_ready_phrases)
+        # Validate seller total when ready to pay
+        if self.state == STATE_READY_TO_PAY:
+            seller_total = detect_seller_total(user_text)
+            if seller_total:
+                validation = self.price_tracker.validate_seller_total(seller_total)
+                if not validation["valid"]:
+                    print(f"[LLM] {validation['alert']}")
 
-# ==============================
-# RESPUESTAS CONTROLADAS
-# ==============================
-def payment_response() -> str:
-    return "Pago por QR porque mi nieta me enseñó. Muchas gracias, que tenga buen día."
+        # Build payload and stream from Ollama
+        prompt = self._build_prompt(user_text)
+        payload = {
+            "model": OLLAMA_MODEL,
+            "stream": True,
+            "prompt": prompt,
+            "temperature": 0.85,
+            "options": {
+                "num_ctx": self._num_ctx,
+                "num_predict": self._num_predict,
+                "num_batch": self._num_batch,
+                "top_k": 50,
+                "top_p": 0.9,
+                "num_gpu": self._num_gpu,
+                **({"num_thread": self._num_thread} if self._num_thread > 0 else {}),
+            },
+        }
 
-def ready_to_pay_response() -> str:
-    return "Listo, con eso es todo. ¿Me genera el cobro por favor?"
+        assistant_text = ""
+        first_sentence_sent = False
 
-# ==============================
-# GUARDRAILS
-# ==============================
-def _limit_to_two_sentences(text: str) -> str:
-    s = sanitize_text(text)
-    if not s:
-        return s
+        try:
+            response = requests.post(OLLAMA_URL, json=payload, timeout=120, stream=True)
+            response.raise_for_status()
 
-    out = []
-    sentence = []
-    count = 0
-    i = 0
-    while i < len(s) and count < 2:
-        ch = s[i]
-        sentence.append(ch)
+            for line in response.iter_lines():
+                if not line:
+                    continue
+                try:
+                    chunk = json.loads(line)
+                    token = chunk.get("response", "")
+                    assistant_text += token
 
-        is_end = False
-        if ch in "?!":
-            is_end = True
-        elif ch == ".":
-            prev_c = s[i-1] if i > 0 else ""
-            next_c = s[i+1] if i + 1 < len(s) else ""
-            if not (prev_c.isdigit() and next_c.isdigit()):
-                is_end = True
+                    # Notify caller with the first complete sentence
+                    if not first_sentence_sent and on_first_sentence:
+                        for end_char in ".?!":
+                            if end_char in assistant_text:
+                                idx = assistant_text.index(end_char) + 1
+                                first = assistant_text[:idx].strip()
+                                if len(first) > 5:
+                                    on_first_sentence(first)
+                                    first_sentence_sent = True
+                                    break
 
-        if is_end:
-            seg = "".join(sentence).strip()
-            if seg:
-                out.append(seg)
-                count += 1
-            sentence = []
+                    if chunk.get("done", False):
+                        break
+                except json.JSONDecodeError:
+                    continue
 
-        i += 1
+        except Exception as e:
+            print(f"[LLM] Ollama error: {e}")
+            assistant_text = "Disculpe vecino, no le entendí bien. ¿Me lo repite por favor?"
 
-    if count < 2:
-        tail = "".join(sentence).strip()
-        if tail:
-            out.append(tail)
+        # Post-processing
+        assistant_text = self._remove_repeated_greetings(assistant_text)
+        assistant_text = self._apply_guardrails(assistant_text)
 
-    result = " ".join(out).strip()
-    return result
+        # State transition
+        old_state = self.state
+        self.state = self._compute_next_state(user_text, assistant_text)
+        if self.state != old_state:
+            print(f"[LLM] State: {old_state} -> {self.state}")
 
-def _violates_role_or_currency(text: str) -> bool:
-    t = text.lower()
-    forbidden = ["usd", "dólar", "dolar", "dolares", "dólares"]
-    if any(w in t for w in forbidden):
-        return True
-    if re.search(r"\b(vendo|le\s+vendo|te\s+vendo|vendemos)\b", t):
-        return True
-    return False
+        return assistant_text
 
-def _is_reopening_negotiation(text: str) -> bool:
-    """
-    Detecta si el BOT está intentando REABRIR negociación.
-    """
-    t = text.lower()
-    
-    negotiation_patterns = [
-        r"\bme\s+lo\s+deja\b",
-        r"\bme\s+la\s+deja\b",
-        r"\bme\s+los\s+deja\b",
-        r"\bme\s+las\s+deja\b",
-        r"\bdéjemelo\b",
-        r"\bdéjamelo\b",
-        r"\brebaj[ae]\b",
-        r"\bdescuento\b",
-        r"\bmás\s+barat[oa]\b",
-        r"\bmenos\b.*\b(plata|precio)\b",
-        r"\bregáleme\b",
-        r"\bregálame\b",
-        r"\bcafecito\b",
-        r"\bpor\s+ese\s+precio\s+no\b",
-    ]
-    
-    for pattern in negotiation_patterns:
-        if re.search(pattern, t, re.IGNORECASE):
-            return True
-    
-    return False
+    # ------------------------------------------------------------------
+    # Prompt construction
+    # ------------------------------------------------------------------
 
-def _apply_guardrails(text: str, state: str) -> str:
-    s = sanitize_text(text)
-    if not s:
-        return s
+    def _build_prompt(self, user_text: str) -> str:
+        trimmed = trim_history(self.history)
+        parts: List[str] = []
 
-    s = _limit_to_two_sentences(s)
+        # System prompt
+        parts.append(self._SYSTEM_PROMPT)
 
-    if _violates_role_or_currency(s):
-        return "Vecino, yo estoy comprando y pago en pesos. ¿En cuánto me lo deja entonces?"
+        # State-specific instructions
+        instruction = self._STATE_INSTRUCTIONS.get(
+            self.state, self._STATE_INSTRUCTIONS[STATE_NEGOTIATING],
+        )
+        parts.append("\n" + instruction)
 
-    # Guardrail para READY_TO_PAY - solo bloquea reapertura de negociación
-    if state == STATE_READY_TO_PAY:
-        if _is_reopening_negotiation(s):
-            return ready_to_pay_response()
-        if buyer_ready_to_pay(s):
+        # Price validation alert
+        if self.state == STATE_READY_TO_PAY:
+            seller_total = detect_seller_total(user_text)
+            if seller_total:
+                validation = self.price_tracker.validate_seller_total(seller_total)
+                if not validation["valid"]:
+                    parts.append("\nALERTA MATEMÁTICA:")
+                    parts.append(f"Vendedor dice: {seller_total} pesos")
+                    parts.append(f"Cálculo correcto: {validation['correct_total']} pesos")
+                    parts.append(f"Diferencia: {validation['difference']} pesos")
+                    parts.append("Debes cuestionar este total. Verifica mentalmente.")
+
+        # Product count info
+        if self.state in (STATE_BUILDING_ORDER, STATE_READY_TO_PAY):
+            count = self._count_products(trimmed)
+            product_list = self._extract_product_list(trimmed)
+            parts.append(
+                f"\nPRODUCTOS PEDIDOS HASTA AHORA: {count} de {MAX_PRODUCTS} máximo"
+            )
+            if product_list:
+                parts.append(f"Lista mental de productos: {', '.join(product_list)}")
+
+            if count >= MAX_PRODUCTS:
+                parts.append(
+                    "YA ALCANZASTE EL LÍMITE DE PRODUCTOS. "
+                    "Di 'con eso es todo' y pide el cobro."
+                )
+            elif count >= MAX_PRODUCTS - 1:
+                parts.append(
+                    "Estás cerca del límite. Puedes pedir UN producto más como máximo."
+                )
+
+            if self._seller_asks_what_to_buy(user_text):
+                parts.append(
+                    "El vendedor pregunta qué llevas. LISTA todos los productos que has pedido."
+                )
+
+        parts.append("Instrucciones generales: Máximo 2 frases. TÚ ERES EL COMPRADOR.\n")
+
+        # Conversation history
+        if trimmed:
+            parts.append("--- Conversación previa ---")
+            for msg in trimmed:
+                label = "Vendedor" if msg["role"] == "user" else "Tú (Comprador)"
+                parts.append(f"{label}: {msg['content']}")
+            parts.append("--- Fin conversación previa ---\n")
+
+        parts.append(f"Vendedor dice ahora: {user_text}")
+        parts.append("\nTu respuesta (máximo 2 frases como comprador):")
+
+        return "\n".join(parts)
+
+    # ------------------------------------------------------------------
+    # Guardrails
+    # ------------------------------------------------------------------
+
+    def _apply_guardrails(self, text: str) -> str:
+        s = sanitize_text(text)
+        if not s:
             return s
 
-    return s
+        s = self._limit_to_two_sentences(s)
 
-# ==============================
-# CONSTRUCCIÓN DE PROMPT CON ESTADOS ACTIVOS + CONTEO DE PRODUCTOS - MEJORADO
-# ==============================
-def build_prompt_with_history(
-    history: List[Dict[str, str]], 
-    user_text: str, 
-    state: str,
-    price_tracker: Optional[PriceTracker] = None
-) -> str:
-    trimmed_history = trim_history(history)
-    
-    prompt_parts = []
-    
-    # 1. System prompt base
-    prompt_parts.append(SYSTEM_PROMPT.strip())
-    
-    # 2. Instrucciones específicas del estado actual
-    state_instruction = STATE_INSTRUCTIONS.get(state, STATE_INSTRUCTIONS[STATE_NEGOTIATING])
-    prompt_parts.append("\n" + state_instruction)
-    
-    # 3. NUEVO: Inyectar validación de total si hay discrepancia
-    if state == STATE_READY_TO_PAY and price_tracker:
-        seller_total = detect_seller_total(user_text)
-        if seller_total:
-            validation = price_tracker.validate_seller_total(seller_total)
-            if not validation["valid"]:
-                prompt_parts.append(f"\n⚠️ ALERTA MATEMÁTICA:")
-                prompt_parts.append(f"Vendedor dice: {seller_total} pesos")
-                prompt_parts.append(f"Cálculo correcto: {validation['correct_total']} pesos")
-                prompt_parts.append(f"Diferencia: {validation['difference']} pesos")
-                prompt_parts.append("Debes cuestionar este total. Verifica mentalmente.")
-    
-    # 4. Conteo de productos (para BUILDING_ORDER y READY_TO_PAY)
-    if state in (STATE_BUILDING_ORDER, STATE_READY_TO_PAY):
-        product_count = count_products_purchased(trimmed_history)
-        product_list = extract_product_list(trimmed_history)
-        
-        prompt_parts.append(f"\n📦 PRODUCTOS PEDIDOS HASTA AHORA: {product_count} de {MAX_PRODUCTS} máximo")
-        if product_list:
-            prompt_parts.append(f"📋 Lista mental de productos: {', '.join(product_list)}")
-        
-        if product_count >= MAX_PRODUCTS:
-            prompt_parts.append("⚠️ YA ALCANZASTE EL LÍMITE DE PRODUCTOS. Di 'con eso es todo' y pide el cobro.")
-        elif product_count >= MAX_PRODUCTS - 1:
-            prompt_parts.append("⚠️ Estás cerca del límite. Puedes pedir UN producto más como máximo.")
-        
-        # Si el vendedor pregunta qué lleva, instruir al bot a listar
-        if seller_asks_what_to_buy(user_text):
-            prompt_parts.append("ℹ️ El vendedor pregunta qué llevas. LISTA todos los productos que has pedido.")
-    
-    # 5. Instrucciones generales
-    prompt_parts.append("Instrucciones generales: Máximo 2 frases. TÚ ERES EL COMPRADOR.\n")
-    
-    # 6. Historial de conversación
-    if trimmed_history:
-        prompt_parts.append("--- Conversación previa ---")
-        for msg in trimmed_history:
-            role_label = "Vendedor" if msg["role"] == "user" else "Tú (Comprador)"
-            prompt_parts.append(f"{role_label}: {msg['content']}")
-        prompt_parts.append("--- Fin conversación previa ---\n")
-    
-    # 7. Mensaje actual
-    prompt_parts.append(f"Vendedor dice ahora: {user_text}")
-    prompt_parts.append("\nTu respuesta (máximo 2 frases como comprador):")
-    
-    return "\n".join(prompt_parts)
+        if self._violates_role_or_currency(s):
+            return "Vecino, yo estoy comprando y pago en pesos. ¿En cuánto me lo deja entonces?"
 
-# ==============================
-# DETECCIÓN DE TRANSICIONES DE ESTADO
-# ==============================
-def detect_state_transition(
-    current_state: str,
-    user_text: str,
-    assistant_text: str,
-    history: List[Dict[str, str]]
-) -> str:
-    user_lower = user_text.lower()
-    assistant_lower = assistant_text.lower()
-    
-    # NEGOTIATING → BUILDING_ORDER
-    if current_state == STATE_NEGOTIATING:
-        # Si el comprador acepta el primer producto (precio aceptado)
-        accept_phrases = ["listo", "bueno", "está bien", "ok", "dale", "sí", "si",
-                         "me llevo", "me los llevo", "me lo llevo", "perfecto", "de una"]
-        if any(phrase in assistant_lower for phrase in accept_phrases):
-            # Verificar que hay contexto de precio/producto
-            if seller_confirms_price(user_text) or _has_cop_amount(user_text):
-                print(f"🔄 Transición: {STATE_NEGOTIATING} → {STATE_BUILDING_ORDER}")
-                return STATE_BUILDING_ORDER
-            
-            # También transicionar si el comprador acepta después de rechazos
-            rejection_count = sum(1 for msg in history[-6:] 
-                                if msg["role"] == "user" and 
-                                any(word in msg["content"].lower() for word in ["no", "precio fijo", "no puedo"]))
-            if rejection_count >= 2:
-                print(f"🔄 Transición: {STATE_NEGOTIATING} → {STATE_BUILDING_ORDER} (rechazos múltiples)")
-                return STATE_BUILDING_ORDER
-    
-    # BUILDING_ORDER → READY_TO_PAY
-    elif current_state == STATE_BUILDING_ORDER:
-        # Si el comprador dice que terminó de comprar
-        if buyer_ready_to_pay(assistant_text):
-            print(f"🔄 Transición: {STATE_BUILDING_ORDER} → {STATE_READY_TO_PAY}")
-            return STATE_READY_TO_PAY
-        
-        # Si vendedor da total y comprador confirma
-        if seller_confirms_price(user_text):
-            ready_phrases = ["listo", "perfecto", "cómo pago", "como pago", "generar"]
-            if any(phrase in assistant_lower for phrase in ready_phrases):
-                print(f"🔄 Transición: {STATE_BUILDING_ORDER} → {STATE_READY_TO_PAY}")
+        if self.state == STATE_READY_TO_PAY:
+            if self._is_reopening_negotiation(s):
+                return self._ready_to_pay_response()
+            if self._buyer_ready_to_pay(s):
+                return s
+
+        return s
+
+    @staticmethod
+    def _limit_to_two_sentences(text: str) -> str:
+        s = sanitize_text(text)
+        if not s:
+            return s
+
+        out: List[str] = []
+        sentence: List[str] = []
+        count = 0
+        i = 0
+
+        while i < len(s) and count < 2:
+            ch = s[i]
+            sentence.append(ch)
+
+            is_end = False
+            if ch in "?!":
+                is_end = True
+            elif ch == ".":
+                prev_c = s[i - 1] if i > 0 else ""
+                next_c = s[i + 1] if i + 1 < len(s) else ""
+                if not (prev_c.isdigit() and next_c.isdigit()):
+                    is_end = True
+
+            if is_end:
+                seg = "".join(sentence).strip()
+                if seg:
+                    out.append(seg)
+                    count += 1
+                sentence = []
+
+            i += 1
+
+        if count < 2:
+            tail = "".join(sentence).strip()
+            if tail:
+                out.append(tail)
+
+        return " ".join(out).strip()
+
+    @staticmethod
+    def _violates_role_or_currency(text: str) -> bool:
+        t = text.lower()
+        forbidden = ["usd", "dólar", "dolar", "dolares", "dólares"]
+        if any(w in t for w in forbidden):
+            return True
+        if re.search(r"\b(vendo|le\s+vendo|te\s+vendo|vendemos)\b", t):
+            return True
+        return False
+
+    @staticmethod
+    def _is_reopening_negotiation(text: str) -> bool:
+        t = text.lower()
+        patterns = [
+            r"\bme\s+lo\s+deja\b", r"\bme\s+la\s+deja\b",
+            r"\bme\s+los\s+deja\b", r"\bme\s+las\s+deja\b",
+            r"\bdéjemelo\b", r"\bdéjamelo\b",
+            r"\brebaj[ae]\b", r"\bdescuento\b",
+            r"\bmás\s+barat[oa]\b", r"\bmenos\b.*\b(plata|precio)\b",
+            r"\bregáleme\b", r"\bregálame\b",
+            r"\bcafecito\b", r"\bpor\s+ese\s+precio\s+no\b",
+        ]
+        return any(re.search(p, t, re.IGNORECASE) for p in patterns)
+
+    # ------------------------------------------------------------------
+    # Greeting deduplication
+    # ------------------------------------------------------------------
+
+    def _remove_repeated_greetings(self, text: str) -> str:
+        greetings = self._GREETING_RE.findall(text)
+        if len(greetings) <= 1:
+            return text
+
+        count = 0
+
+        def _replace(match: re.Match) -> str:
+            nonlocal count
+            count += 1
+            if count == 1:
+                return match.group(0)
+            return self._GREETING_ALTS[count % len(self._GREETING_ALTS)]
+
+        return self._GREETING_RE.sub(_replace, text)
+
+    # ------------------------------------------------------------------
+    # State transition detection
+    # ------------------------------------------------------------------
+
+    def _compute_next_state(self, user_text: str, assistant_text: str) -> str:
+        """Determine the next conversation state based on the current exchange."""
+        current = self.state
+        assistant_lower = assistant_text.lower()
+
+        # NEGOTIATING -> BUILDING_ORDER
+        if current == STATE_NEGOTIATING:
+            accept_phrases = [
+                "listo", "bueno", "está bien", "ok", "dale", "sí", "si",
+                "me llevo", "me los llevo", "me lo llevo", "perfecto", "de una",
+            ]
+            if any(p in assistant_lower for p in accept_phrases):
+                if self._seller_confirms_price(user_text) or self._has_cop_amount(user_text):
+                    return STATE_BUILDING_ORDER
+
+                rejection_count = sum(
+                    1 for msg in self.history[-6:]
+                    if msg["role"] == "user"
+                    and any(w in msg["content"].lower() for w in ["no", "precio fijo", "no puedo"])
+                )
+                if rejection_count >= 2:
+                    return STATE_BUILDING_ORDER
+
+        # BUILDING_ORDER -> READY_TO_PAY
+        elif current == STATE_BUILDING_ORDER:
+            if self._buyer_ready_to_pay(assistant_text):
                 return STATE_READY_TO_PAY
-        
-        # Si alcanzó el límite de productos
-        product_count = count_products_purchased(history)
-        if product_count >= MAX_PRODUCTS:
-            print(f"🔄 Transición: {STATE_BUILDING_ORDER} → {STATE_READY_TO_PAY} (límite de productos)")
-            return STATE_READY_TO_PAY
-    
-    # READY_TO_PAY → FINISHED
-    elif current_state == STATE_READY_TO_PAY:
-        if seller_asks_payment(user_text):
-            print(f"🔄 Transición: {STATE_READY_TO_PAY} → {STATE_FINISHED}")
-            return STATE_FINISHED
-    
-    return current_state
 
-# ==============================
-# MOTOR PRINCIPAL - MEJORADO
-# ==============================
+            if self._seller_confirms_price(user_text):
+                ready = ["listo", "perfecto", "cómo pago", "como pago", "generar"]
+                if any(p in assistant_lower for p in ready):
+                    return STATE_READY_TO_PAY
+
+            if self._count_products(self.history) >= MAX_PRODUCTS:
+                return STATE_READY_TO_PAY
+
+        # READY_TO_PAY -> FINISHED
+        elif current == STATE_READY_TO_PAY:
+            if self._seller_asks_payment(user_text):
+                return STATE_FINISHED
+
+        return current
+
+    # ------------------------------------------------------------------
+    # Text detection helpers
+    # ------------------------------------------------------------------
+
+    def _has_cop_amount(self, text: str) -> bool:
+        return bool(self._COP_AMOUNT_RE.search(text))
+
+    @staticmethod
+    def _seller_asks_payment(text: str) -> bool:
+        """Detect payment question/invitation from seller."""
+        t = text.lower()
+        patterns = [
+            r"\b(c[oó]mo|con qu[eé]|de qu[eé] manera)\b.*\b(paga|pagar|desea pagar|va a pagar)\b",
+            r"\b(m[eé]todo|forma)\s+de\s+pago\b",
+            r"\b(es|ser[ií]a)\b.*\b(efectivo|qr|transferencia|tarjeta)\b.*\b(o)\b",
+            r"\b(efectivo)\s+o\s+(mediante\s+)?\b(qr|transferencia|tarjeta)\b",
+            r"\b(le)\s+recibo\b.*\b(efectivo|qr|transferencia|tarjeta)\b",
+            r"\b(desea|quiere|va\s+a)\s+pagar\b.*\b(efectivo|qr|transferencia|tarjeta)\b.*\b(o)\b",
+        ]
+        for p in patterns:
+            if re.search(p, t, re.IGNORECASE):
+                if "?" in t or any(
+                    k in t for k in ["pagar", "paga", "recibo", "metodo", "método"]
+                ):
+                    return True
+
+        if re.search(r"\b(c[oó]mo\s+desea\s+pagar|c[oó]mo\s+va\s+a\s+pagar)\b", t):
+            return True
+
+        return False
+
+    @staticmethod
+    def _seller_confirms_price(text: str) -> bool:
+        """Detect price confirmation/closing from seller."""
+        t = text.lower()
+
+        if "precio por" in t or "por el kilo" in t or "por kilo" in t:
+            return False
+
+        closing = [
+            "listo", "de una", "perfecto", "quedamos", "queda en", "le queda en",
+            "entonces serían", "serían en total", "en total", "total sería",
+            "confirmado", "dale", "hágale", "hagale", "dejémoslo", "dejamos",
+            "lo dejo", "se lo dejo",
+        ]
+        has_close = any(m in t for m in closing)
+        has_amount = (
+            ConversationEngine._COP_AMOUNT_RE.search(t) is not None
+            or ("total" in t and any(ch.isdigit() for ch in t))
+        )
+        return bool(has_close and has_amount)
+
+    @staticmethod
+    def _buyer_ready_to_pay(text: str) -> bool:
+        """Detect if buyer is ready to proceed to payment."""
+        t = text.lower()
+        phrases = [
+            "eso es todo", "nada más", "solo eso", "con eso",
+            "con eso es todo", "generar el cobro", "cómo pago", "como pago",
+            "listo entonces", "ya está", "ya esta", "perfecto", "dele",
+        ]
+        return any(p in t for p in phrases)
+
+    @staticmethod
+    def _seller_asks_what_to_buy(text: str) -> bool:
+        """Detect when seller asks what products the buyer wants."""
+        t = text.lower()
+        patterns = [
+            r"\bqu[eé]\s+(se\s+)?lleva",
+            r"\bqu[eé]\s+le\s+(empaco|alisto)",
+            r"\bqu[eé]\s+m[aá]s\s+le\s+(doy|empaco)",
+            r"\bqu[eé]\s+productos",
+            r"\bqu[eé]\s+necesita",
+            r"\balgo\s+m[aá]s",
+            r"\bnecesita\s+algo\s+m[aá]s",
+        ]
+        return any(re.search(p, t, re.IGNORECASE) for p in patterns)
+
+    @staticmethod
+    def _count_products(history: List[Dict[str, str]]) -> int:
+        return len(ConversationEngine._extract_product_list(history))
+
+    @staticmethod
+    def _extract_product_list(history: List[Dict[str, str]]) -> List[str]:
+        products: set = set()
+        buy_patterns = [
+            r"\b(?:me\s+da|deme|déme|quiero|llevo|me\s+llevo|necesito|dame|también)"
+            r"\s+(?:\d+\s+)?(?:kilos?\s+de\s+|libras?\s+de\s+|libra\s+de\s+)?(\w+)",
+            r"\b(?:tiene|hay)\s+(\w+)",
+            r"\b(\w+)\s+(?:a\s+cuánto|a\s+como|cuánto\s+vale|cuánto\s+cuesta)",
+        ]
+        ignore = {
+            "usted", "algo", "más", "mas", "todo", "eso", "nada", "favor",
+            "precio", "plata", "pesos", "cobro", "pago", "total", "cuenta",
+            "bien", "bueno", "listo", "dale", "gracias", "señor", "vecino",
+            "qué", "que", "cómo", "como", "cuánto", "cuanto", "también",
+            "el", "la", "los", "las", "un", "una", "unos", "unas",
+        }
+
+        for msg in history:
+            if msg["role"] == "assistant":
+                text = msg["content"].lower()
+                for pattern in buy_patterns:
+                    for match in re.findall(pattern, text, re.IGNORECASE):
+                        word = match.strip().lower()
+                        if word and len(word) > 2 and word not in ignore:
+                            products.add(word)
+
+        return list(products)
+
+    @staticmethod
+    def _payment_response() -> str:
+        return "Pago por QR porque mi nieta me enseñó. Muchas gracias, que tenga buen día."
+
+    @staticmethod
+    def _ready_to_pay_response() -> str:
+        return "Listo, con eso es todo. ¿Me genera el cobro por favor?"
+
+
+# ---------------------------------------------------------------------------
+# Backward-compatible wrapper (used by legacy callers)
+# ---------------------------------------------------------------------------
+
 def ollama_generate(
     history: List[Dict[str, str]],
     user_text: str,
     state: str,
     price_tracker: Optional[PriceTracker] = None,
-    on_first_sentence=None
+    on_first_sentence: Optional[Callable[[str], None]] = None,
 ) -> Tuple[Optional[str], str]:
-    """
-    Genera respuesta del modelo via streaming.
-    on_first_sentence: callback(text) llamado cuando la primera frase está lista.
-                       Permite enviar texto parcial a VR sin esperar la respuesta completa.
-    """
-    user_text = sanitize_text(user_text)
+    """Legacy wrapper — prefer ``ConversationEngine.process_message``."""
+    engine = ConversationEngine()
+    engine.history = list(history)
+    engine.state = state
+    if price_tracker is not None:
+        engine.price_tracker = price_tracker
+    response = engine._generate(user_text, on_first_sentence)
 
-    # ESTADO FINAL → SILENCIO ABSOLUTO
-    if state == STATE_FINISHED:
-        print("🔇 Estado FINISHED - No se genera respuesta")
-        return None, STATE_FINISHED
+    # Propagate state changes back
+    history.clear()
+    history.extend(engine.history)
 
-    # Si vendedor pide pago → responde controlado y termina
-    if seller_asks_payment(user_text):
-        payment_resp = payment_response()
-        print("💳 Solicitud de pago detectada - Finalizando conversación")
-        return payment_resp, STATE_FINISHED
-
-    # Chequeo suave de límite de productos
-    if state == STATE_BUILDING_ORDER:
-        product_count = count_products_purchased(history)
-        if product_count >= MAX_PRODUCTS:
-            print(f"📦 Límite de productos alcanzado ({product_count}/{MAX_PRODUCTS})")
-            return ready_to_pay_response(), STATE_READY_TO_PAY
-
-    # NUEVO: Validar total si estamos en READY_TO_PAY
-    if state == STATE_READY_TO_PAY and price_tracker:
-        seller_total = detect_seller_total(user_text)
-        if seller_total:
-            validation = price_tracker.validate_seller_total(seller_total)
-            if not validation["valid"]:
-                print(f"⚠️ {validation['alert']}")
-
-    payload = {
-        "model": OLLAMA_MODEL,
-        "stream": True,
-        "prompt": build_prompt_with_history(history, user_text, state, price_tracker),
-        "temperature": 0.85,
-        "options": {
-            "num_ctx": OLLAMA_NUM_CTX,
-            "num_predict": OLLAMA_NUM_PREDICT,
-            "num_batch": OLLAMA_NUM_BATCH,
-            "top_k": 50,
-            "top_p": 0.9,
-            "num_gpu": OLLAMA_NUM_GPU,
-            **({"num_thread": OLLAMA_NUM_THREAD} if OLLAMA_NUM_THREAD > 0 else {}),
-        }
-    }
-
-    try:
-        import json as _json
-        response = requests.post(OLLAMA_URL, json=payload, timeout=120, stream=True)
-        response.raise_for_status()
-        
-        # Streaming: acumular tokens y notificar primera frase
-        assistant_text = ""
-        first_sentence_sent = False
-        for line in response.iter_lines():
-            if line:
-                try:
-                    chunk = _json.loads(line)
-                    token = chunk.get("response", "")
-                    assistant_text += token
-                    
-                    # Detectar fin de primera frase y notificar a VR
-                    if not first_sentence_sent and on_first_sentence:
-                        # Buscar fin de oración (. ? !)
-                        for end_char in ['.', '?', '!']:
-                            if end_char in assistant_text:
-                                idx = assistant_text.index(end_char) + 1
-                                first_sentence = assistant_text[:idx].strip()
-                                if len(first_sentence) > 5:
-                                    on_first_sentence(first_sentence)
-                                    first_sentence_sent = True
-                                    break
-                    
-                    if chunk.get("done", False):
-                        break
-                except _json.JSONDecodeError:
-                    continue
-    except Exception as e:
-        print(f"❌ Error Ollama: {e}")
-        assistant_text = "Disculpe vecino, no le entendí bien. ¿Me lo repite por favor?"
-
-    # NUEVO: Eliminar repeticiones de saludos
-    assistant_text = _remove_repeated_greetings(assistant_text)
-    
-    # Aplicar guardrails
-    assistant_text = _apply_guardrails(assistant_text, state)
-    
-    # Detectar transición de estado
-    new_state = detect_state_transition(state, user_text, assistant_text, history)
-    
-    if new_state != state:
-        print(f"📊 Estado actualizado: {state} → {new_state}")
-    
-    return assistant_text, new_state
+    return response, engine.state

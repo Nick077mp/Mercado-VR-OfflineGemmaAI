@@ -1,41 +1,28 @@
-# Dependencias para el servidor de IA de voz
-# Core - FastAPI y servidor
+# Core — FastAPI server
 fastapi>=0.104.0
 uvicorn[standard]>=0.24.0
 python-multipart>=0.0.6
 pydantic>=2.0.0
 
-# PyTorch - Machine Learning Core
+# ML — PyTorch (Silero VAD)
 torch>=2.0.0
-torchaudio>=2.0.0
 
-# STT - Speech to Text
-vosk>=0.3.45
+# STT — Faster-Whisper (offline)
 faster-whisper>=1.0.0
-openai-whisper>=20231117
 
-# TTS - Text to Speech  
+# TTS — Piper (offline)
 piper-tts>=1.2.0
-edge-tts>=6.1.0
-pydub>=0.25.1
 
-# Audio - Procesamiento
+# Audio
 numpy>=1.21.0
 scipy>=1.7.0
 soundfile>=0.12.0
 sounddevice>=0.4.6
-librosa>=0.10.0
 
-# HTTP - Comunicacion con Ollama
+# HTTP
 requests>=2.28.0
 httpx>=0.24.0
 
-# Transformers & AI
-transformers>=4.35.0
-tokenizers>=0.15.0
-
-# Utilidades
-python-dotenv>=1.0.0
+# Testing (test_spacebar_vr.py)
+keyboard>=0.13.5
 colorama>=0.4.6
-tabulate>=0.9.0
-tqdm>=4.65.0

@@ -72,21 +72,40 @@ REM ==========================================
 echo [PASO 2/2] Iniciando servidor Python...
 echo.
 
-REM Verificar que existe el entorno virtual
-if not exist ".venv\Scripts\activate.bat" (
-    echo [ERROR] No se encontro entorno virtual .venv
-    echo.
-    echo [!] Necesitas crear el entorno virtual primero:
-    echo     1. python -m venv .venv
-    echo     2. .venv\Scripts\activate
-    echo     3. pip install -r requirements.txt
-    echo.
-    pause
-    exit /b 1
+REM Detectar entorno virtual automaticamente
+set VENV_DIR=
+
+REM 1. Si ya hay un entorno activo, usarlo directamente
+if defined VIRTUAL_ENV (
+    echo [OK] Entorno virtual ya activo: %VIRTUAL_ENV%
+    set VENV_DIR=%VIRTUAL_ENV%
+    goto :VENV_FOUND
 )
 
+REM 2. Buscar carpetas comunes de entorno virtual
+for %%D in (.venv venv env .env) do (
+    if exist "%%D\Scripts\activate.bat" (
+        set VENV_DIR=%%D
+        goto :VENV_FOUND
+    )
+)
+
+REM 3. No se encontro ningun entorno virtual
+echo [ERROR] No se encontro entorno virtual
+echo.
+echo [!] Necesitas crear el entorno virtual primero:
+echo     1. python -m venv .venv
+echo     2. .venv\Scripts\activate
+echo     3. pip install -r requirements.txt
+echo.
+pause
+exit /b 1
+
+:VENV_FOUND
+echo [OK] Entorno virtual detectado: %VENV_DIR%
+
 REM Iniciar servidor Python en nueva ventana (desde raiz del proyecto)
-start "Python AI Server - Puerto 8000" cmd /k "cd /d %CD% && call .venv\Scripts\activate.bat && python api_server.py"
+start "Python AI Server - Puerto 8000" cmd /k "cd /d %CD% && call %VENV_DIR%\Scripts\activate.bat && python api_server.py"
 
 echo [OK] Servidor Python iniciado en ventana separada
 echo.

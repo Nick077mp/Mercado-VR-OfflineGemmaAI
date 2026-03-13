@@ -11,19 +11,37 @@ echo ========================================
 REM Cambiar al directorio raiz del proyecto (padre de scripts/)
 cd /d "%~dp0\.."
 
-REM Verificar si existe el entorno virtual
-if not exist ".venv\Scripts\activate.bat" (
-    echo [ERROR] No se encontro el entorno virtual .venv
-    echo [!] Ejecuta: python -m venv .venv
-    echo [!] Luego: .venv\Scripts\activate
-    echo [!] Y: pip install -r requirements.txt
-    pause
-    exit /b 1
+REM Detectar entorno virtual automaticamente
+set VENV_DIR=
+
+REM 1. Si ya hay un entorno activo, usarlo directamente
+if defined VIRTUAL_ENV (
+    echo [OK] Entorno virtual ya activo: %VIRTUAL_ENV%
+    set VENV_DIR=%VIRTUAL_ENV%
+    goto :VENV_READY
 )
 
-REM Activar entorno virtual
-echo [*] Activando entorno virtual...
-call .venv\Scripts\activate.bat
+REM 2. Buscar carpetas comunes de entorno virtual
+for %%D in (.venv venv env .env) do (
+    if exist "%%D\Scripts\activate.bat" (
+        set VENV_DIR=%%D
+        goto :VENV_ACTIVATE
+    )
+)
+
+REM 3. No se encontro ningun entorno virtual
+echo [ERROR] No se encontro entorno virtual
+echo [!] Ejecuta: python -m venv .venv
+echo [!] Luego: .venv\Scripts\activate
+echo [!] Y: pip install -r requirements.txt
+pause
+exit /b 1
+
+:VENV_ACTIVATE
+echo [*] Activando entorno virtual: %VENV_DIR%
+call %VENV_DIR%\Scripts\activate.bat
+
+:VENV_READY
 
 REM Verificar que httpx está instalado
 python -c "import httpx" 2>nul
