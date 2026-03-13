@@ -6,7 +6,7 @@ from typing import List, Dict, Optional, Tuple
 # CONFIGURACIÓN
 # ==============================
 OLLAMA_URL = "http://localhost:11434/api/generate"
-OLLAMA_MODEL = "gemma3:4b"
+OLLAMA_MODEL = "gemma3:12b"
 MAX_HISTORY = 20
 MAX_PRODUCTS = 5  # Límite de productos por compra
 
