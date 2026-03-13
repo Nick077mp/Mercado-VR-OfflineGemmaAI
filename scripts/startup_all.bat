@@ -11,8 +11,8 @@ echo Sistema de IA de Voz para VR
 echo ========================================
 echo.
 
-REM Cambiar al directorio del script
-cd /d "%~dp0"
+REM Cambiar al directorio raiz del proyecto (padre de scripts/)
+cd /d "%~dp0\.."
 
 REM ==========================================
 REM PASO 1: Iniciar Ollama
@@ -85,8 +85,8 @@ if not exist ".venv\Scripts\activate.bat" (
     exit /b 1
 )
 
-REM Iniciar servidor Python en nueva ventana
-start "Python AI Server - Puerto 8000" cmd /k "call .venv\Scripts\activate.bat && python api_server.py"
+REM Iniciar servidor Python en nueva ventana (desde raiz del proyecto)
+start "Python AI Server - Puerto 8000" cmd /k "cd /d %CD% && call .venv\Scripts\activate.bat && python api_server.py"
 
 echo [OK] Servidor Python iniciado en ventana separada
 echo.

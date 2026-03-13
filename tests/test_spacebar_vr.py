@@ -9,7 +9,7 @@ Flujo (idéntico al VR):
   3. Polling automático en /get_latest_response
 
 Requisitos:
-  - api_server.py corriendo en puerto 8000  (python main.py --api-server)
+  - api_server.py corriendo en puerto 8000  (python api_server.py)
   - Ollama corriendo  (ollama serve)
   - pip install keyboard requests colorama
 
@@ -93,7 +93,7 @@ def check_server():
             return False
     except requests.ConnectionError:
         print(f"  {Fore.RED}❌ No se pudo conectar al servidor en {API_BASE_URL}{Style.RESET_ALL}")
-        print(f"  {Fore.YELLOW}💡 Inicia el servidor con: python main.py --api-server{Style.RESET_ALL}")
+        print(f"  {Fore.YELLOW}💡 Inicia el servidor con: python api_server.py{Style.RESET_ALL}")
         return False
     except Exception as e:
         print(f"  {Fore.RED}❌ Error verificando servidor: {e}{Style.RESET_ALL}")
@@ -242,7 +242,7 @@ def main():
         print(f"\n  {Fore.RED}❌ No se puede continuar sin el servidor API.{Style.RESET_ALL}")
         print(f"  {Fore.YELLOW}💡 Ejecuta primero:{Style.RESET_ALL}")
         print(f"     1. {Fore.WHITE}ollama serve{Style.RESET_ALL}")
-        print(f"     2. {Fore.WHITE}python main.py --api-server{Style.RESET_ALL}")
+        print(f"     2. {Fore.WHITE}python api_server.py{Style.RESET_ALL}")
         print(f"     3. {Fore.WHITE}python test_spacebar_vr.py{Style.RESET_ALL}")
         input(f"\n  Presiona ENTER para salir...")
         sys.exit(1)

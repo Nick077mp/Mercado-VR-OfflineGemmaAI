@@ -4,6 +4,9 @@ REM Script para iniciar servidor Ollama
 REM Verifica si está corriendo y espera confirmación
 REM ==================================================
 
+REM Cambiar al directorio raiz del proyecto (padre de scripts/)
+cd /d "%~dp0\.."
+
 echo ========================================
 echo Iniciando Servidor Ollama
 echo ========================================

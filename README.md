@@ -1,181 +1,160 @@
-# 🎙️ Waygroup Local Voice Assistant - 100% Offline
+# 🎙️ Waygroup Local Voice Assistant — 100% Offline
 
-> An offline AI assistant that responds to prompts using a custom-trained cloned voice. No internet required, fully private, and personalized. **Waygroup Project**
+> A fully offline VR voice assistant powered by local AI. No internet required, fully private. **Waygroup Project**
 
-Sistema completo de asistente de voz que funciona **totalmente offline** sin necesidad de internet.
+Sistema de asistente de voz para VR que funciona **100% offline** usando IA local. Diseñado para simular conversaciones de compra en una plaza de mercado colombiana, con un personaje (José) que negocia precios en español.
 
 ## 🚀 Características
 
-- ✅ **100% Offline** - No requiere conexión a internet
-- 🎤 **Reconocimiento de voz** - Faster-Whisper con Silero VAD
-- 🤖 **Inteligencia Artificial** - Mistral via Ollama
-- 🔊 **Síntesis de voz** - Piper TTS (voces españolas de calidad)
-- ⚡ **Ultra rápido** - Audio generado en <0.2 segundos
-- 🇨🇴 **Español colombiano** - Optimizado para español
-- 🔧 **CFFI Error Suppression** - Sin ventanas emergentes en Windows
+- ✅ **100% Offline** — No requiere conexión a internet
+- 🎤 **Speech-to-Text** — Faster-Whisper (small) + Silero VAD en CPU
+- 🤖 **LLM Local** — Gemma 3 4B via Ollama (modo GPU híbrido)
+- 🔊 **Text-to-Speech** — Piper TTS con voces en español (.onnx)
+- 🎮 **Integración VR** — API REST para Unreal Engine (push-to-talk)
+- 🇨🇴 **Español colombiano** — Prompts y NLP optimizados para español
+- ⚡ **Streaming** — Primera frase enviada a VR antes de completar generación
 
-## 📋 Requisitos Previos
+## 📋 Requisitos
 
-1. **Python 3.11.9**
-2. **Ollama** instalado con modelo Mistral
-3. **Windows** (para pyttsx3)
+- **Python 3.11+**
+- **Ollama** con modelo `gemma3:4b`
+- **Windows** (scripts .bat, audio con sounddevice)
+- **GPU NVIDIA** recomendada (modo híbrido GPU+CPU para coexistir con VR)
 
 ## 🔧 Instalación
 
-### 1. Clonar el repositorio
 ```bash
-git clone <tu-repositorio>
-cd ai_voice_server
-```
+git clone https://github.com/tu-usuario/Waygroup-local-voice-assistant.git
+cd Waygroup-local-voice-assistant
 
-### 2. Crear entorno virtual
-```bash
-python -m venv venv
-.\venv\Scripts\activate
-```
+python -m venv .venv
+.venv\Scripts\activate
 
-### 3. Instalar dependencias
-```bash
 pip install -r requirements.txt
 ```
 
-### 4. Verificar Ollama
-Asegúrate de que Ollama esté corriendo:
+Verificar que Ollama esté instalado y el modelo descargado:
 ```bash
-ollama run mistral
+ollama pull gemma3:4b
 ```
 
 ## ▶️ Uso
 
-### Opción 1: Con Unreal Engine (Sistema Completo VR)
+### Modo VR (con Unreal Engine)
 
-1. **Iniciar servidores:**
-   ```bash
-   # Ejecutar script de auto-inicio
-   startup_all.bat
-   ```
-   Esto iniciará:
-   - Servidor Ollama (puerto 11434)
-   - Servidor Python API (puerto 8000)
-
-2. **Abrir Unreal Engine:**
-   - Esperar a que ambos servidores estén corriendo
-   - Iniciar proyecto VR
-   - El sistema estará listo para recibir comandos de voz
-
-3. **Usar en VR:**
-   - Presionar botón del control VR para iniciar grabación
-   - Hablar mientras se mantiene presionado
-   - Soltar botón para procesar
-   - La IA responderá automáticamente
-
-### Opción 2: Modo Standalone (Solo Terminal)
-
-Para usar sin Unreal Engine:
 ```bash
-python main.py
+scripts\startup_all.bat
 ```
+
+Esto inicia automáticamente:
+- Servidor Ollama en `localhost:11434` (modo GPU híbrido)
+- Servidor Python API en `localhost:8000`
+
+Luego abre el proyecto VR en Unreal Engine. El flujo es:
+1. Presionar botón VR → `POST /start_recording`
+2. Hablar mientras se mantiene presionado
+3. Soltar botón → `POST /stop_recording`
+4. Python procesa: STT → LLM → respuesta enviada a VR
+
+### Modo Standalone (terminal)
+
+```bash
+python voice_automation_model.py
+```
+
+Usa micrófono local con detección automática de silencio (Silero VAD).
 
 ## 📁 Estructura del Proyecto
 
 ```
-ai_voice_server/
-├── main.py                    # Punto de entrada standalone
-├── api_server.py              # Servidor API para Unreal Engine
-├── voice_recorder.py          # Lógica de grabación
-├── startup_all.bat            # Script de auto-inicio (Windows)
-├── start_ollama.bat           # Iniciar servidor Ollama
-├── start_python_server.bat    # Iniciar servidor Python
-├── services/                  # Módulos de servicios
-│   ├── stt_faster_whisper.py # Reconocimiento de voz (STT)
-│   ├── ollama_service.py     # IA con Ollama (LLM)
-│   ├── tts_piper_only.py     # Síntesis de voz (TTS)
-│   └── audio_service.py      # Manejo de audio
-├── Documentation/             # Documentación
-│   ├── VR_BUTTON_CONTROL.md  # Control por botón VR
-│   └── UNREAL_SETUP.md       # Configuración Unreal
-├── requirements.txt          # Dependencias Python
-└── README.md                 # Este archivo
+Waygroup-local-voice-assistant/
+├── api_server.py               # Servidor FastAPI para comunicación con VR
+├── voice_automation_model.py    # Grabación + pipeline STT→LLM→TTS standalone
+├── requirements.txt            # Dependencias Python
+├── services/                   # Módulos de servicios
+│   ├── ollama_service.py       # LLM: prompts, estados, negociación, guardrails
+│   ├── stt_faster_whisper.py   # STT: Faster-Whisper + Silero VAD
+│   └── tts_piper_only.py       # TTS: Piper con voces .onnx
+├── scripts/                    # Scripts de inicio (Windows)
+│   ├── startup_all.bat         # Inicia Ollama + Python API
+│   ├── start_ollama.bat        # Solo Ollama
+│   └── start_python_server.bat # Solo Python API
+├── tests/                      # Simuladores y tests
+│   └── test_spacebar_vr.py     # Simula botón VR con barra espaciadora
+├── docs/                       # Documentación adicional
+│   ├── UNREAL_SETUP.md         # Configuración de Unreal Engine
+│   └── VR_BUTTON_CONTROL.md    # Endpoints de control VR
+├── voices/                     # Modelos de voz Piper (.onnx)
+└── AI_Push-to-talk/            # Build de Unreal Engine (Windows)
 ```
 
-## 🎯 Flujo de Funcionamiento
+## 🎯 Pipeline
 
-### Modo VR (con Unreal Engine)
-1. **Botón presionado** → Inicia grabación de audio
-2. **Usuario habla** → Audio se captura en tiempo real
-3. **Botón soltado** → Detiene grabación y envía a servidor
-4. **Transcripción** → Faster Whisper convierte voz a texto
-5. **Procesamiento IA** → Ollama genera respuesta inteligente
-6. **Síntesis de voz** → Piper TTS genera audio
-7. **Envío a Unreal** → Texto enviado para lip sync del avatar
-8. **Reproducción** → Audio se reproduce automáticamente
+```
+Micrófono → Faster-Whisper (STT) → Ollama/Gemma 3 (LLM) → Texto → VR (lip sync)
+                                                          ↘ Piper TTS → Audio (standalone)
+```
+
+### Modo VR
+1. VR presiona botón → Python graba audio del micrófono
+2. Audio → Faster-Whisper (CPU) → transcripción en español
+3. Transcripción → Ollama/Gemma 3 4B (GPU híbrido) → respuesta en streaming
+4. Primera frase → push inmediato a VR para lip sync
+5. Respuesta completa disponible via polling
 
 ### Modo Standalone
-1. **Grabación** → El usuario habla por el micrófono
-2. **Transcripción** → Faster Whisper convierte voz a texto
-3. **Procesamiento** → Ollama genera respuesta inteligente
-4. **Síntesis** → Piper TTS convierte respuesta a audio
-5. **Reproducción** → El audio se reproduce automáticamente
+1. Micrófono con Silero VAD → detección automática de voz/silencio
+2. Audio → Faster-Whisper → transcripción
+3. Transcripción → Ollama → respuesta palabra por palabra
+4. Cada frase → Piper TTS → reproducción de audio en tiempo real
 
-## 🔌 Endpoints de API (para Unreal Engine)
+## 🔌 API Endpoints (puerto 8000)
 
-### Servidor Python (puerto 8000)
-- `POST /start_recording` - Iniciar grabación (botón presionado)
-- `POST /stop_recording` - Detener y procesar (botón soltado)
-- `GET /get_latest_response` - Consultar última respuesta (polling)
-- `GET /recording_status` - Estado de grabación
-- `GET /status` - Estado del sistema
-- `GET /` - Health check
+| Método | Endpoint | Descripción |
+|--------|----------|-------------|
+| `POST` | `/start_recording` | Iniciar grabación (botón VR presionado) |
+| `POST` | `/stop_recording` | Detener y procesar (botón VR soltado) |
+| `GET` | `/get_latest_response` | Polling: obtener última respuesta de IA |
+| `GET` | `/recording_status` | Estado actual de grabación |
+| `GET` | `/status` | Health check del sistema |
 
-### Comunicación con Unreal
-**Método 1: Polling (Recomendado)**
-- Unreal consulta `GET /get_latest_response` cada 0.5 segundos
-- Cuando hay respuesta nueva, se devuelve y se marca como leída
+### Comunicación VR
 
-**Método 2: Push (Avanzado)**
-- Python envía `POST http://localhost:8001/chat` a Unreal
-- Requiere servidor HTTP en Unreal escuchando puerto 8001
+**Polling (recomendado):** Unreal consulta `GET /get_latest_response` cada 0.5s.
 
-Ver `Documentation/UNREAL_SETUP.md` para detalles completos.
+**Push (avanzado):** Python envía `POST http://localhost:8001/chat` directamente a Unreal (requiere HTTP server en Unreal).
 
-## ⚠️ Configuración
+Ver [docs/UNREAL_SETUP.md](docs/UNREAL_SETUP.md) para configuración completa.
 
-### Cambiar velocidad de voz
-Edita `services/tts_service.py`:
+## ⚙️ Configuración
+
+### Perfil de rendimiento GPU/CPU
+En `services/ollama_service.py`:
 ```python
-TTS_ENGINE_OBJ.setProperty('rate', 180)  # 150-200 normal, 200+ rápido
+PERFORMANCE_PROFILE = "gpu_hybrid"  # Opciones: "gpu_full", "gpu_hybrid", "cpu_only"
 ```
 
-### Cambiar modelo de IA
-Edita `services/ollama_service.py`:
+### Modelo de IA
+En `services/ollama_service.py`:
 ```python
-MODEL_NAME = "mistral"  # o "llama2", "codellama", etc.
+OLLAMA_MODEL = "gemma3:4b"
+```
+
+### Modelo de voz TTS
+En `services/tts_piper_only.py`:
+```python
+PIPER_MODEL = "voices/es_ES-davefx-medium.onnx"
 ```
 
 ## 🐛 Solución de Problemas
 
-### Error: "ModuleNotFoundError"
-```bash
-.\venv\Scripts\activate
-pip install -r requirements.txt
-```
-
-### Ollama no responde
-```bash
-ollama serve
-ollama run mistral
-```
-
-### No detecta micrófono
-Ejecuta y selecciona el micrófono correcto cuando el sistema pregunte.
-
-## 📝 Licencia
-
-Proyecto personal - Uso libre
+| Problema | Solución |
+|----------|----------|
+| `ModuleNotFoundError` | `.venv\Scripts\activate` → `pip install -r requirements.txt` |
+| Ollama no responde | `ollama serve` → verificar `http://localhost:11434` |
+| No detecta micrófono | Ejecutar `python voice_automation_model.py` y seleccionar micrófono manualmente |
+| VR no recibe respuesta | Verificar que VR haga polling a `GET /get_latest_response` |
 
 ## 👤 Autor
 
-Nicolás - Programador
-
----
-**Nota**: Este sistema está optimizado para Windows y ahora incluye supresión de errores CFFI para mejor compatibilidad.
+Nicolás — Waygroup

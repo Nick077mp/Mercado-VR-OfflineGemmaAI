@@ -23,10 +23,13 @@ from services.stt_faster_whisper import (
 
 from services.ollama_service import (
     ollama_generate,
+    PriceTracker,
+    extract_price_and_product,
     sanitize_text,
     trim_history,
     STATE_NEGOTIATING,
-    STATE_ACCEPTED,
+    STATE_BUILDING_ORDER,
+    STATE_READY_TO_PAY,
     STATE_FINISHED
 )
 
@@ -98,6 +101,7 @@ SILENCE_DURATION = 1.2
 # =========================
 conversation_history = []
 conversation_state = STATE_NEGOTIATING
+price_tracker = PriceTracker()
 
 # =========================
 # UTILIDADES
@@ -222,16 +226,25 @@ async def stream_llm_words(transcript: str) -> AsyncGenerator[str, None]:
     """
     global conversation_history
     global conversation_state
+    global price_tracker
 
     clean_transcript = sanitize_text(transcript)
     if not clean_transcript:
         return
 
     try:
+        # Detectar y registrar productos/precios del vendedor
+        product_price = extract_price_and_product(clean_transcript)
+        if product_price:
+            product_name, price = product_price
+            price_tracker.add_product(product_name, 1, price)
+            print(f"\n📦 Producto registrado: {product_name} × 1 @ {price} COP")
+
         response, new_state = ollama_generate(
             conversation_history,
             clean_transcript,
-            conversation_state
+            conversation_state,
+            price_tracker=price_tracker
         )
         conversation_state = new_state
 
@@ -241,10 +254,10 @@ async def stream_llm_words(transcript: str) -> AsyncGenerator[str, None]:
         clean_response = sanitize_text(response)
 
         # Guardar historial SOLO si hay respuesta válida
-        conversation_history.append({
-            "user": clean_transcript,
-            "assistant": clean_response
-        })
+        conversation_history.extend([
+            {"role": "user", "content": clean_transcript},
+            {"role": "assistant", "content": clean_response}
+        ])
         conversation_history = trim_history(conversation_history)
 
         for word in clean_response.split():

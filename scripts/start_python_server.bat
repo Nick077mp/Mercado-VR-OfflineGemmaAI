@@ -8,8 +8,8 @@ echo ========================================
 echo Iniciando Servidor Python de IA
 echo ========================================
 
-REM Cambiar al directorio del script
-cd /d "%~dp0"
+REM Cambiar al directorio raiz del proyecto (padre de scripts/)
+cd /d "%~dp0\.."
 
 REM Verificar si existe el entorno virtual
 if not exist ".venv\Scripts\activate.bat" (
