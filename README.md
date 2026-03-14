@@ -1,6 +1,6 @@
-# 🎙️ Waygroup Local Voice Assistant — 100% Offline
+# 🎙️ Mercado VR — Offline Gemma AI
 
-> A fully offline VR voice assistant powered by local AI. No internet required, fully private. **Waygroup Project**
+> A fully offline VR voice assistant powered by local AI. No internet required, fully private.
 
 Sistema de asistente de voz para VR que funciona **100% offline** usando IA local. Diseñado para simular conversaciones de compra en una plaza de mercado colombiana, con un personaje (José) que negocia precios en español.
 
@@ -24,8 +24,8 @@ Sistema de asistente de voz para VR que funciona **100% offline** usando IA loca
 ## 🔧 Instalación
 
 ```bash
-git clone https://github.com/tu-usuario/Waygroup-local-voice-assistant.git
-cd Waygroup-local-voice-assistant
+git clone https://github.com/Nick077mp/Mercado-VR-OfflineGemmaAI.git
+cd Mercado-VR-OfflineGemmaAI
 
 python -m venv .venv
 .venv\Scripts\activate
@@ -67,7 +67,7 @@ Usa micrófono local con detección automática de silencio (Silero VAD).
 ## 📁 Estructura del Proyecto
 
 ```
-Waygroup-local-voice-assistant/
+Mercado-VR-OfflineGemmaAI/
 ├── api_server.py               # Servidor FastAPI para comunicación con VR
 ├── voice_automation_model.py    # Grabación + pipeline STT→LLM→TTS standalone
 ├── requirements.txt            # Dependencias Python
@@ -157,4 +157,4 @@ PIPER_MODEL = "voices/es_ES-davefx-medium.onnx"
 
 ## 👤 Autor
 
-Nicolás — Waygroup
+Nicolás — [Nick077mp](https://github.com/Nick077mp)
