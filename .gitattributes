@@ -1,3 +1,6 @@
+# Unreal Engine build artifacts — exclude from GitHub language statistics
+AI_Push-to-talk/** linguist-vendored
+
 *.utoc filter=lfs diff=lfs merge=lfs -text
 *.pak filter=lfs diff=lfs merge=lfs -text
 *.dll filter=lfs diff=lfs merge=lfs -text
