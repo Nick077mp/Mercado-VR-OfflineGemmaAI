@@ -6,6 +6,7 @@ prompt construction, guardrails and Ollama LLM streaming.
 
 import json
 import re
+import time
 from typing import Callable, Dict, List, Optional, Tuple
 
 import requests
@@ -23,6 +24,7 @@ PERFORMANCE_PROFILES: Dict[str, Dict] = {
         "num_thread": 1,
         "num_ctx": 4096,
         "num_predict": 280,
+        "num_batch": 1024,
     },
     "gpu_hybrid": {
         "num_gpu": 30,
@@ -40,7 +42,7 @@ PERFORMANCE_PROFILES: Dict[str, Dict] = {
 }
 
 # Change to switch profiles: "gpu_full" | "gpu_hybrid" | "cpu_only"
-ACTIVE_PROFILE_NAME: str = "gpu_hybrid"
+ACTIVE_PROFILE_NAME: str = "gpu_full"
 
 # ---------------------------------------------------------------------------
 # Conversation states
@@ -68,6 +70,37 @@ def sanitize_text(text: Optional[str]) -> str:
 def trim_history(history: List[Dict[str, str]]) -> List[Dict[str, str]]:
     """Keep only the last *MAX_HISTORY* messages."""
     return history[-MAX_HISTORY:] if len(history) > MAX_HISTORY else history
+
+
+def warmup_model(
+    profile_name: str = ACTIVE_PROFILE_NAME,
+    timeout: float = 60.0,
+) -> bool:
+    """Pre-load the model into GPU VRAM so the first real request is fast."""
+    profile = PERFORMANCE_PROFILES[profile_name]
+    payload = {
+        "model": OLLAMA_MODEL,
+        "prompt": "Hola",
+        "stream": False,
+        "keep_alive": "30m",
+        "options": {
+            "num_ctx": profile["num_ctx"],
+            "num_predict": 1,
+            "num_batch": profile.get("num_batch", 512),
+            "num_gpu": profile["num_gpu"],
+        },
+    }
+    print(f"[WARMUP] Pre-loading {OLLAMA_MODEL} into VRAM (profile={profile_name})...")
+    t0 = time.perf_counter()
+    try:
+        resp = requests.post(OLLAMA_URL, json=payload, timeout=timeout)
+        resp.raise_for_status()
+        elapsed = time.perf_counter() - t0
+        print(f"[WARMUP] Model loaded in {elapsed:.1f}s - ready for instant responses")
+        return True
+    except Exception as e:
+        print(f"[WARMUP] Failed to pre-load model: {e}")
+        return False
 
 
 # ---------------------------------------------------------------------------
@@ -367,6 +400,7 @@ class ConversationEngine:
             "model": OLLAMA_MODEL,
             "stream": True,
             "prompt": prompt,
+            "keep_alive": "30m",
             "temperature": 0.85,
             "options": {
                 "num_ctx": self._num_ctx,

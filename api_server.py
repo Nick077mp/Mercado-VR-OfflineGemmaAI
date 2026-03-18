@@ -29,6 +29,7 @@ from services.audio_recorder import (
 from services.ollama_service import (
     ConversationEngine,
     sanitize_text,
+    warmup_model,
     STATE_FINISHED,
 )
 
@@ -355,6 +356,10 @@ def start_api_server(host: str = "127.0.0.1", port: int = 8000) -> None:
     # Detect microphone
     print("[API] Detecting VR microphone...")
     recorder.microphone_id = recorder.auto_detect_microphone()
+
+    # Warmup: pre-load LLM into GPU VRAM for instant first response
+    print("[API] Warming up LLM model...")
+    warmup_model()
 
     print(f"\n  URL: http://{host}:{port}")
     print(f"  Docs: http://{host}:{port}/docs")

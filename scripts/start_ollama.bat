@@ -23,23 +23,22 @@ echo [*] Ollama no detectado, iniciando...
 echo.
 
 REM ==========================================
-REM MODO GPU HIBRIDO - Compatible con VR
+REM MODO GPU FULL - RTX 5070ti 16GB VRAM
 REM ==========================================
 REM CUDA_VISIBLE_DEVICES=0 usa la NVIDIA RTX (GPU 0)
 set CUDA_VISIBLE_DEVICES=0
-REM OLLAMA_NUM_GPU se controla desde ollama_service.py (perfil hibrido)
 REM OLLAMA_FLASH_ATTENTION=1 optimiza uso de VRAM
 set OLLAMA_FLASH_ATTENTION=1
 REM OLLAMA_MAX_LOADED_MODELS=1 solo 1 modelo cargado (libera VRAM)
 set OLLAMA_MAX_LOADED_MODELS=1
-REM OLLAMA_KEEP_ALIVE=10m descarga modelo de VRAM tras 10 min inactivo
-set OLLAMA_KEEP_ALIVE=10m
+REM OLLAMA_KEEP_ALIVE=30m mantiene modelo en VRAM 30 min
+set OLLAMA_KEEP_ALIVE=30m
 
-echo [*] Modo GPU Hibrido activado (compatible con VR)
+echo [*] Modo GPU Full activado (RTX 5070ti 16GB VRAM)
 echo.
 
 REM Iniciar Ollama en segundo plano
-start "Ollama Server (Hybrid Mode)" cmd /k "set CUDA_VISIBLE_DEVICES=0 && set OLLAMA_FLASH_ATTENTION=1 && set OLLAMA_MAX_LOADED_MODELS=1 && set OLLAMA_KEEP_ALIVE=10m && ollama serve"
+start "Ollama Server (GPU Full)" cmd /k "set CUDA_VISIBLE_DEVICES=0 && set OLLAMA_FLASH_ATTENTION=1 && set OLLAMA_MAX_LOADED_MODELS=1 && set OLLAMA_KEEP_ALIVE=30m && ollama serve"
 
 REM Esperar a que Ollama esté listo
 echo [*] Esperando a que Ollama este listo...
