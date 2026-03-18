@@ -211,7 +211,9 @@ class ConversationEngine:
         "- Compras entre 3 y 5 productos máximo\n"
         "- Cuando tengas suficientes, dices \"con eso está bien\" o similar\n"
         "- Siempre eres el COMPRADOR, nunca vendes\n"
-        "- Usas pesos colombianos (COP)\n\n"
+        "- Usas pesos colombianos (COP)\n"
+        "- NUNCA uses el símbolo '$' para precios. Escribe los precios solo con números y la palabra 'pesos'\n"
+        "- Ejemplo correcto: '2500 pesos' o '2 mil pesos'. Ejemplo INCORRECTO: '$2500'\n\n"
         "GESTIÓN DE CONTEXTO:\n"
         "- Recuerda solo lo que se ha dicho en esta conversación\n"
         "- No repitas preguntas o comentarios anteriores\n"
@@ -416,6 +418,7 @@ class ConversationEngine:
 
         # Post-processing
         assistant_text = self._clean_filler_sounds(assistant_text)
+        assistant_text = self._strip_dollar_sign(assistant_text)
         assistant_text = self._remove_repeated_greetings(assistant_text)
         assistant_text = self._apply_guardrails(assistant_text)
 
@@ -496,6 +499,13 @@ class ConversationEngine:
         r'|\b[Ee]h+\b'
         r'|\b[Uu]mm+\b',
     )
+
+    @staticmethod
+    def _strip_dollar_sign(text: str) -> str:
+        """Remove '$' symbols so TTS does not read them as 'dólar'."""
+        if not text:
+            return text
+        return text.replace("$", "")
 
     @classmethod
     def _clean_filler_sounds(cls, text: str) -> str:
