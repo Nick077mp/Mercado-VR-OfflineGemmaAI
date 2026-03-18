@@ -112,32 +112,6 @@ def extract_price_and_product(text: str) -> Optional[Tuple[str, int]]:
     return None
 
 
-def detect_seller_total(text: str) -> Optional[int]:
-    """Detect when the seller announces a total.
-
-    Example: ``"El total sería 42 mil pesos"`` -> ``42000``
-    """
-    t = text.lower()
-    if "total" not in t and "serían" not in t and "sería" not in t:
-        return None
-
-    mil_matches = re.findall(r"(\d+)\s*mil", t)
-    if mil_matches:
-        return int(mil_matches[0]) * 1000
-
-    price_matches = re.findall(
-        r"(?:\$\s*)?(\d+(?:[.,]\d{3})+|\d+)(?:\s*pesos)?", t,
-    )
-    if price_matches:
-        price_str = price_matches[0].replace(".", "").replace(",", "")
-        try:
-            return int(price_str)
-        except ValueError:
-            pass
-
-    return None
-
-
 # ---------------------------------------------------------------------------
 # PriceTracker
 # ---------------------------------------------------------------------------
@@ -161,20 +135,6 @@ class PriceTracker:
         self.total_calculated = sum(
             p["quantity"] * p["price"] for p in self.products.values()
         )
-
-    def validate_seller_total(self, seller_total: int) -> Dict:
-        if self.total_calculated == seller_total:
-            return {"valid": True, "correct_total": self.total_calculated, "difference": 0}
-        return {
-            "valid": False,
-            "correct_total": self.total_calculated,
-            "seller_total": seller_total,
-            "difference": seller_total - self.total_calculated,
-            "alert": (
-                f"Discrepancy: correct={self.total_calculated}, "
-                f"seller={seller_total}, diff={seller_total - self.total_calculated}"
-            ),
-        }
 
     def get_summary(self) -> str:
         if not self.products:
@@ -220,8 +180,8 @@ class ConversationEngine:
     # -- System prompt --
 
     _SYSTEM_PROMPT: str = (
-        "Eres José, un campesino colombiano que compra en la plaza de mercado. "
-        "Hablas con naturalidad, tranquilo y educado.\n\n"
+        "Eres Andrea, una campesina colombiana que compra en la plaza de mercado. "
+        "Hablas con naturalidad, tranquila y educada.\n\n"
         "COMPORTAMIENTO:\n"
         "- Eres conversador: haces preguntas genuinas sobre calidad, frescura y origen de productos\n"
         "- Mantienes una lista mental clara de productos y precios (sin inventar datos)\n"
@@ -401,14 +361,6 @@ class ConversationEngine:
                 self.state = STATE_READY_TO_PAY
                 return self._ready_to_pay_response()
 
-        # Validate seller total when ready to pay
-        if self.state == STATE_READY_TO_PAY:
-            seller_total = detect_seller_total(user_text)
-            if seller_total:
-                validation = self.price_tracker.validate_seller_total(seller_total)
-                if not validation["valid"]:
-                    print(f"[LLM] {validation['alert']}")
-
         # Build payload and stream from Ollama
         prompt = self._build_prompt(user_text)
         payload = {
@@ -463,6 +415,7 @@ class ConversationEngine:
             assistant_text = "Disculpe vecino, no le entendí bien. ¿Me lo repite por favor?"
 
         # Post-processing
+        assistant_text = self._clean_filler_sounds(assistant_text)
         assistant_text = self._remove_repeated_greetings(assistant_text)
         assistant_text = self._apply_guardrails(assistant_text)
 
@@ -490,18 +443,6 @@ class ConversationEngine:
             self.state, self._STATE_INSTRUCTIONS[STATE_NEGOTIATING],
         )
         parts.append("\n" + instruction)
-
-        # Price validation alert
-        if self.state == STATE_READY_TO_PAY:
-            seller_total = detect_seller_total(user_text)
-            if seller_total:
-                validation = self.price_tracker.validate_seller_total(seller_total)
-                if not validation["valid"]:
-                    parts.append("\nALERTA MATEMÁTICA:")
-                    parts.append(f"Vendedor dice: {seller_total} pesos")
-                    parts.append(f"Cálculo correcto: {validation['correct_total']} pesos")
-                    parts.append(f"Diferencia: {validation['difference']} pesos")
-                    parts.append("Debes cuestionar este total. Verifica mentalmente.")
 
         # Product count info
         if self.state in (STATE_BUILDING_ORDER, STATE_READY_TO_PAY):
@@ -542,6 +483,31 @@ class ConversationEngine:
         parts.append("\nTu respuesta (máximo 2 frases como comprador):")
 
         return "\n".join(parts)
+
+    # ------------------------------------------------------------------
+    # Filler sound removal
+    # ------------------------------------------------------------------
+
+    _FILLER_RE = re.compile(
+        r'\b[Mm]+\b'
+        r'|\b[Mm],\s*[Mm],\s*[Mm]\b'
+        r'|\b[Mm]{2,}\b'
+        r'|\b[Hh]mm+\b'
+        r'|\b[Ee]h+\b'
+        r'|\b[Uu]mm+\b',
+    )
+
+    @classmethod
+    def _clean_filler_sounds(cls, text: str) -> str:
+        """Remove filler sounds like 'mmm', 'm, m, m', 'hmm', etc."""
+        if not text:
+            return text
+        cleaned = cls._FILLER_RE.sub('', text)
+        # Collapse multiple spaces / leading commas left behind
+        cleaned = re.sub(r'[,\s]+([,])', r'\1', cleaned)
+        cleaned = re.sub(r'\s{2,}', ' ', cleaned)
+        cleaned = re.sub(r'^\s*[,.:;]+\s*', '', cleaned)
+        return cleaned.strip()
 
     # ------------------------------------------------------------------
     # Guardrails
