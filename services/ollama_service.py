@@ -15,7 +15,7 @@ import requests
 # ---------------------------------------------------------------------------
 
 OLLAMA_URL: str = "http://localhost:11434/api/generate"
-OLLAMA_MODEL: str = "gemma3:4b"
+OLLAMA_MODEL: str = "gemma3:12b"
 
 PERFORMANCE_PROFILES: Dict[str, Dict] = {
     "gpu_full": {
@@ -808,7 +808,7 @@ class ConversationEngine:
 
     @staticmethod
     def _payment_response() -> str:
-        return "Pago por QR porque mi nieta me enseñó. Muchas gracias, que tenga buen día."
+        return "Prefiero pagar por QR, es más cómodo y seguro que cargar efectivo. Muchas gracias, que tenga buen día."
 
     @staticmethod
     def _ready_to_pay_response() -> str:
