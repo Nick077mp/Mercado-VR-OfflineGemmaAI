@@ -112,32 +112,6 @@ def extract_price_and_product(text: str) -> Optional[Tuple[str, int]]:
     return None
 
 
-def detect_seller_total(text: str) -> Optional[int]:
-    """Detect when the seller announces a total.
-
-    Example: ``"El total sería 42 mil pesos"`` -> ``42000``
-    """
-    t = text.lower()
-    if "total" not in t and "serían" not in t and "sería" not in t:
-        return None
-
-    mil_matches = re.findall(r"(\d+)\s*mil", t)
-    if mil_matches:
-        return int(mil_matches[0]) * 1000
-
-    price_matches = re.findall(
-        r"(?:\$\s*)?(\d+(?:[.,]\d{3})+|\d+)(?:\s*pesos)?", t,
-    )
-    if price_matches:
-        price_str = price_matches[0].replace(".", "").replace(",", "")
-        try:
-            return int(price_str)
-        except ValueError:
-            pass
-
-    return None
-
-
 # ---------------------------------------------------------------------------
 # PriceTracker
 # ---------------------------------------------------------------------------
@@ -161,20 +135,6 @@ class PriceTracker:
         self.total_calculated = sum(
             p["quantity"] * p["price"] for p in self.products.values()
         )
-
-    def validate_seller_total(self, seller_total: int) -> Dict:
-        if self.total_calculated == seller_total:
-            return {"valid": True, "correct_total": self.total_calculated, "difference": 0}
-        return {
-            "valid": False,
-            "correct_total": self.total_calculated,
-            "seller_total": seller_total,
-            "difference": seller_total - self.total_calculated,
-            "alert": (
-                f"Discrepancy: correct={self.total_calculated}, "
-                f"seller={seller_total}, diff={seller_total - self.total_calculated}"
-            ),
-        }
 
     def get_summary(self) -> str:
         if not self.products:
@@ -401,14 +361,6 @@ class ConversationEngine:
                 self.state = STATE_READY_TO_PAY
                 return self._ready_to_pay_response()
 
-        # Validate seller total when ready to pay
-        if self.state == STATE_READY_TO_PAY:
-            seller_total = detect_seller_total(user_text)
-            if seller_total:
-                validation = self.price_tracker.validate_seller_total(seller_total)
-                if not validation["valid"]:
-                    print(f"[LLM] {validation['alert']}")
-
         # Build payload and stream from Ollama
         prompt = self._build_prompt(user_text)
         payload = {
@@ -490,18 +442,6 @@ class ConversationEngine:
             self.state, self._STATE_INSTRUCTIONS[STATE_NEGOTIATING],
         )
         parts.append("\n" + instruction)
-
-        # Price validation alert
-        if self.state == STATE_READY_TO_PAY:
-            seller_total = detect_seller_total(user_text)
-            if seller_total:
-                validation = self.price_tracker.validate_seller_total(seller_total)
-                if not validation["valid"]:
-                    parts.append("\nALERTA MATEMÁTICA:")
-                    parts.append(f"Vendedor dice: {seller_total} pesos")
-                    parts.append(f"Cálculo correcto: {validation['correct_total']} pesos")
-                    parts.append(f"Diferencia: {validation['difference']} pesos")
-                    parts.append("Debes cuestionar este total. Verifica mentalmente.")
 
         # Product count info
         if self.state in (STATE_BUILDING_ORDER, STATE_READY_TO_PAY):
