@@ -168,6 +168,11 @@ async def process_audio_background(audio_path: str) -> None:
 
             conversation_finished = engine.state == STATE_FINISHED
 
+            # Fallback: if response contains "pago por qr", force finished
+            if not conversation_finished and "pago por qr" in ai_response.lower():
+                conversation_finished = True
+                engine.state = STATE_FINISHED
+
             latest_ai_response = {
                 "response": ai_response,
                 "state": engine.state,
@@ -175,6 +180,7 @@ async def process_audio_background(audio_path: str) -> None:
                 "has_response": True,
             }
             print(f"[API] Total pipeline: {time.perf_counter() - t0:.2f}s")
+            print(f"[API] JSON to VR: {latest_ai_response}")
 
             # Push full response to VR (replaces partial)
             await send_text_to_vr_async(ai_response, conversation_finished, engine.state)
@@ -197,13 +203,16 @@ async def get_latest_response():
     """VR polling endpoint (thread-safe queue)."""
     try:
         response_text = vr_response_queue.get_nowait()
-        print(f"[API] VR received: {response_text[:30]}...")
-        return {
+        finished = "pago por qr" in response_text.lower()
+        resp_state = "FINISHED" if finished else "negotiating"
+        poll_response = {
             "response": response_text,
-            "state": "negotiating",
-            "conversation_finished": False,
+            "state": resp_state,
+            "conversation_finished": finished,
             "conversation_negotiation_cancel": False,
         }
+        print(f"[API] Polled JSON: {poll_response}")
+        return poll_response
     except queue.Empty:
         return {
             "response": "",
@@ -227,7 +236,8 @@ async def voice_record(request: VoiceRecordRequest):
         if error:
             raise HTTPException(status_code=500, detail=error)
 
-        finished = "qr" in result["response"].lower()
+        finished = "pago por qr" in result["response"].lower() or result["state"] == STATE_FINISHED
+        print(f"[API] /voice_record conversation_finished={finished}")
         return VoiceResponse(
             transcription=result["transcription"],
             response=result["response"],
