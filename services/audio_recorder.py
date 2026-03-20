@@ -4,6 +4,7 @@ Encapsulates microphone management (push-to-talk and fixed-duration),
 numpy-to-STT transcription, and VR response delivery (async + sync).
 """
 
+import json
 import os
 import tempfile
 import threading
@@ -277,7 +278,7 @@ async def send_text_to_vr_async(
             "conversation_finished": conversation_finished,
             "conversation_negotiation_cancel": False,
         }
-        print(f"[VR] Push JSON: {data}")
+        print(f"[VR] Push JSON: {json.dumps(data, ensure_ascii=False)}")
         async with httpx.AsyncClient(timeout=2.0) as client:
             response = await client.post(VR_RECEIVE_URL, json=data)
             if response.status_code == 200:
@@ -303,7 +304,7 @@ def send_text_to_vr(
             "conversation_finished": conversation_finished,
             "conversation_negotiation_cancel": False,
         }
-        print(f"[VR] Push JSON (sync): {data}")
+        print(f"[VR] Push JSON (sync): {json.dumps(data, ensure_ascii=False)}")
         response = requests.post(VR_RECEIVE_URL, json=data, timeout=2.0)
         if response.status_code == 200:
             print("[VR] Text pushed to VR successfully")

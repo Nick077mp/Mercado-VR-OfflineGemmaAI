@@ -5,6 +5,7 @@ Supports both push (port 8001) and polling (GET /get_latest_response) delivery.
 """
 
 import asyncio
+import json
 import os
 import queue
 import time
@@ -180,7 +181,7 @@ async def process_audio_background(audio_path: str) -> None:
                 "has_response": True,
             }
             print(f"[API] Total pipeline: {time.perf_counter() - t0:.2f}s")
-            print(f"[API] JSON to VR: {latest_ai_response}")
+            print(f"[API] JSON to VR: {json.dumps(latest_ai_response, ensure_ascii=False)}")
 
             # Push full response to VR (replaces partial)
             await send_text_to_vr_async(ai_response, conversation_finished, engine.state)
@@ -211,7 +212,7 @@ async def get_latest_response():
             "conversation_finished": finished,
             "conversation_negotiation_cancel": False,
         }
-        print(f"[API] Polled JSON: {poll_response}")
+        print(f"[API] Polled JSON: {json.dumps(poll_response, ensure_ascii=False)}")
         return poll_response
     except queue.Empty:
         return {
