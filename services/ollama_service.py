@@ -15,7 +15,7 @@ import requests
 # ---------------------------------------------------------------------------
 
 OLLAMA_URL: str = "http://localhost:11434/api/generate"
-OLLAMA_MODEL: str = "gemma3:12b"
+OLLAMA_MODEL: str = "gemma3:27b"
 
 PERFORMANCE_PROFILES: Dict[str, Dict] = {
     "gpu_full": {
