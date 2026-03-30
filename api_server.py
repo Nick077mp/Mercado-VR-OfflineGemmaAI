@@ -166,13 +166,6 @@ async def process_audio_background(audio_path: str) -> None:
 
             conversation_finished = engine.state == STATE_FINISHED
 
-            # Safety net: only from READY_TO_PAY — prevent early termination
-            if (not conversation_finished
-                    and "pago por qr" in ai_response.lower()
-                    and engine.state == "READY_TO_PAY"):
-                conversation_finished = True
-                engine.state = STATE_FINISHED
-
             latest_ai_response = {
                 "response": ai_response,
                 "state": engine.state,
@@ -218,10 +211,7 @@ async def voice_record(request: VoiceRecordRequest):
         if error:
             raise HTTPException(status_code=500, detail=error)
 
-        finished = result["state"] == STATE_FINISHED or (
-            "pago por qr" in result["response"].lower()
-            and result["state"] == "READY_TO_PAY"
-        )
+        finished = result["state"] == STATE_FINISHED
         print(f"[API] /voice_record conversation_finished={finished}")
         return VoiceResponse(
             transcription=result["transcription"],
