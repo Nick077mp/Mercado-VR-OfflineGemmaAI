@@ -80,26 +80,35 @@ def extract_price_and_product(text: str) -> Optional[Tuple[str, int]]:
     """
     t = text.lower()
 
-    price_pattern = (
-        r"(?:(?:\$)\s*)?"
-        r"(?:(?:\d{1,3}(?:[.,]\d{3})+)|(?:\d+))"
-        r"(?:\s*(?:pesos|cop))?"
-    )
-    prices = re.findall(price_pattern, t)
+    # First check "X mil" pattern (e.g. "8 mil pesos" -> 8000)
+    mil_matches = re.findall(r"(\d+)\s*mil(?:\s*(?:pesos|cop))?", t)
+    if mil_matches:
+        price_str = str(int(mil_matches[0]) * 1000)
+    else:
+        # Then check formatted numbers (10.300) or plain numbers with pesos/cop
+        price_pattern = (
+            r"(?:(?:\$)\s*)?"
+            r"((?:\d{1,3}(?:[.,]\d{3})+)|(?:\d+))"
+            r"(?:\s*(?:pesos|cop))"
+        )
+        prices = re.findall(price_pattern, t)
 
-    if not prices:
-        mil_matches = re.findall(r"(\d+)\s*mil", t)
-        if mil_matches:
-            prices = [str(int(m) * 1000) for m in mil_matches]
+        if not prices:
+            # Fallback: any number with $ prefix
+            prices = re.findall(r"\$\s*(\d[\d.,]*)", t)
 
-    if not prices:
-        return None
+        if not prices:
+            return None
 
-    price_str = prices[0].replace(".", "").replace(",", "")
+        price_str = prices[0].replace(".", "").replace(",", "")
+
     try:
         price = int(price_str)
     except ValueError:
         return None
+
+    if price < 100:
+        return None  # Skip implausible prices (e.g. "8" from partial match)
 
     matches = re.findall(r"(\w+)\s+(?:a\s+)?(?:en\s+)?(?:\$\s*)?(?:\d+)", t)
     if matches:
@@ -196,7 +205,8 @@ class ConversationEngine:
         "- Nunca inventes precios que no se hayan mencionado\n"
         "- Escribe precios con números y 'pesos' (ej: 2500 pesos), NUNCA con '$'\n"
         "- Compras entre 3 y 5 productos máximo\n"
-        "- Cuando el vendedor pregunte cómo pagas, elige pago por QR y despídete"
+        "- NUNCA menciones pago, QR ni te despidas hasta que el vendedor te pregunte el método de pago\n"
+        "- Cuando aceptas un precio, pregunta por OTRO producto. No termines la compra con solo uno"
     )
 
     # -- State-specific instructions --
@@ -206,8 +216,10 @@ class ConversationEngine:
             "ESTADO: NEGOCIANDO\n"
             "- NUNCA aceptes el primer precio, pide rebaja amable\n"
             "- Si rechazan 2 veces, acepta: \"Bueno, me lo llevo\"\n"
-            "- Puedes preguntar por otros productos\n"
-            "Ej: Vendedor dice 10 mil → Tú: \"¿Me lo deja en 8 mil?\""
+            "- Cuando aceptes un precio, SIEMPRE pregunta por otro producto en la misma respuesta\n"
+            "- NO menciones pago, QR, ni te despidas. Todavía estás comprando\n"
+            "Ej: Vendedor dice 10 mil → Tú: \"¿Me lo deja en 8 mil?\"\n"
+            "Ej: Acepta precio → \"Bueno, me lo llevo. ¿Tiene tomates frescos?\""
         ),
         STATE_BUILDING_ORDER: (
             "ESTADO: ARMANDO PEDIDO\n"
@@ -476,6 +488,14 @@ class ConversationEngine:
     # Guardrails
     # ------------------------------------------------------------------
 
+    # Patterns that indicate premature farewell/payment
+    _PREMATURE_PAYMENT_RE = re.compile(
+        r"\b(pago\s+por\s+qr|pagar|método\s+de\s+pago|transferencia|"
+        r"buen\s+día|hasta\s+luego|chao|nos\s+vemos|fue\s+un\s+placer|"
+        r"gracias\s+por\s+todo|que\s+le\s+vaya)\b",
+        re.IGNORECASE,
+    )
+
     def _apply_guardrails(self, text: str) -> str:
         s = sanitize_text(text)
         if not s:
@@ -487,13 +507,72 @@ class ConversationEngine:
         if self._violates_role_or_currency(s):
             return "Vecino, yo estoy comprando y pago en pesos. ¿En cuánto me lo deja entonces?"
 
+        # Hard guardrail: premature payment/farewell in early states
+        if self.state in (STATE_NEGOTIATING, STATE_BUILDING_ORDER):
+            if self._PREMATURE_PAYMENT_RE.search(s):
+                print(f"[LLM] Guardrail: stripped premature payment/farewell in {self.state}")
+                s = self._strip_premature_farewell(s)
+
         # Soft guardrail: in READY_TO_PAY, warn if LLM tries to reopen negotiation
         if self.state == STATE_READY_TO_PAY:
             if self._is_reopening_negotiation(s):
-                # Append a redirect instead of replacing the entire response
                 return "Listo, con eso es todo. ¿Me genera el cobro por favor?"
 
         return s
+
+    def _strip_premature_farewell(self, text: str) -> str:
+        """Remove payment/farewell sentences from early-state responses.
+
+        Keeps the acceptance part, strips payment mentions, and appends
+        a follow-up question about another product.
+        """
+        sentences = self._split_into_sentences(text)
+        kept = []
+        for sentence in sentences:
+            if not self._PREMATURE_PAYMENT_RE.search(sentence):
+                kept.append(sentence)
+
+        if kept:
+            result = " ".join(kept).strip()
+            # If the response now lacks a follow-up, add one
+            if not any(c in result for c in "?"):
+                result += " ¿Qué más tiene por ahí fresquito?"
+            return result
+
+        # All sentences were farewell — replace entirely
+        return "Bueno, me lo llevo. ¿Qué más tiene por ahí fresquito?"
+
+    @staticmethod
+    def _split_into_sentences(text: str) -> List[str]:
+        """Split text into sentences, respecting decimal numbers."""
+        sentences: List[str] = []
+        current: List[str] = []
+        i = 0
+        while i < len(text):
+            ch = text[i]
+            current.append(ch)
+            is_end = False
+            if ch in "?!":
+                is_end = True
+            elif ch == ".":
+                prev_c = text[i - 1] if i > 0 else ""
+                next_c = text[i + 1] if i + 1 < len(text) else ""
+                if prev_c.isdigit() and next_c.isdigit():
+                    is_end = False
+                elif next_c == ".":
+                    is_end = False
+                else:
+                    is_end = True
+            if is_end:
+                seg = "".join(current).strip()
+                if seg:
+                    sentences.append(seg)
+                current = []
+            i += 1
+        tail = "".join(current).strip()
+        if tail:
+            sentences.append(tail)
+        return sentences
 
     @staticmethod
     def _limit_sentences(text: str, max_sentences: int = 3) -> str:
