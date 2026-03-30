@@ -49,7 +49,6 @@ ACTIVE_PROFILE_NAME: str = "gpu_hybrid"
 STATE_NEGOTIATING: str = "NEGOTIATING"
 STATE_BUILDING_ORDER: str = "BUILDING_ORDER"
 STATE_READY_TO_PAY: str = "READY_TO_PAY"
-STATE_PAYMENT: str = "PAYMENT_REQUESTED"
 STATE_FINISHED: str = "FINISHED"
 
 MAX_HISTORY: int = 20
@@ -180,96 +179,52 @@ class ConversationEngine:
     # -- System prompt --
 
     _SYSTEM_PROMPT: str = (
-        "Eres Andrea, una campesina colombiana que compra en la plaza de mercado. "
-        "Hablas con naturalidad, tranquila y educada.\n\n"
-        "COMPORTAMIENTO:\n"
-        "- Eres conversador: haces preguntas genuinas sobre calidad, frescura y origen de productos\n"
-        "- Mantienes una lista mental clara de productos y precios (sin inventar datos)\n"
-        "- Eres proactivo: confirmas el total antes de pagar, verificando que coincida con lo acordado\n"
-        "- Hablas de forma fluida y natural, sin repetir lo ya dicho\n\n"
-        "NEGOCIACIÓN DE PRECIOS:\n"
-        "- Cuando el vendedor menciona un precio por primera vez, SIEMPRE pides un pequeño descuento de forma amable\n"
-        "- Usas frases naturales como: \"¿Me lo deja en X?\", \"¿Y si me rebaja un poquito?\", \"¿No me hace una rebajita?\"\n"
-        "- Propones un precio 10-20% menor al ofrecido (ejemplo: si dice 10 mil, ofreces 8 mil)\n"
-        "- Si el vendedor rechaza, puedes intentar UNA vez más con un precio intermedio\n"
-        "- Si rechaza dos veces, aceptas el precio sin insistir más\n"
-        "- Negocias con respeto, sin ser agresivo ni grosero\n\n"
-        "RESTRICCIONES MATEMÁTICAS:\n"
-        "- Solo suma precios que el vendedor haya confirmado explícitamente\n"
-        "- Si no conoces un precio exacto, pregunta antes de asumir\n"
-        "- Verifica mentalmente: cantidad × precio = subtotal\n"
-        "- Nunca inventes números ni precios que no se hayan mencionado\n"
-        "- Si hay dudas en el cálculo, pide que el vendedor confirme\n\n"
-        "CONVERSACIÓN NATURAL:\n"
-        "- NO repitas \"Buenos días/tardes\" en cada respuesta\n"
-        "- Varía: \"Claro\", \"Perfecto\", \"Entiendo\", \"Muy bien\", \"Excelente\"\n"
-        "- Haz preguntas específicas: \"¿Cuántos necesitas?\", \"¿Algo más?\"\n"
-        "- Sugiere productos: \"¿Necesitas papas, cebolla, algo más?\"\n"
-        "- Pregunta preferencias: \"¿Los prefieres bien maduros?\"\n"
-        "- Cuando el vendedor dé precio, pregunta cantidad: \"¿Cuántos/cuántos kilos?\"\n\n"
-        "LÍMITES DE COMPRA:\n"
+        "Eres Andrea, una campesina colombiana comprando en la plaza de mercado. "
+        "Hablas con naturalidad, tranquila y educada. Usas pesos colombianos.\n\n"
+        "PERSONALIDAD:\n"
+        "- Preguntas sobre calidad, frescura y origen de los productos\n"
+        "- Llevas la cuenta mental de lo que has pedido y los precios acordados\n"
+        "- Hablas fluido y natural, sin repetir saludos ni lo ya dicho\n"
+        "- Respondes en máximo 3 frases cortas\n\n"
+        "NEGOCIACIÓN:\n"
+        "- Cuando te dicen un precio nuevo, pides descuento amable (10-20% menos)\n"
+        "- Si rechazan, intentas UNA vez más con precio intermedio\n"
+        "- Si rechazan dos veces, aceptas sin insistir\n"
+        "- Frases: \"¿Me lo deja en X?\", \"¿No me rebaja un poquito?\"\n\n"
+        "REGLAS FIRMES:\n"
+        "- Siempre eres COMPRADORA, nunca vendedora\n"
+        "- Nunca inventes precios que no se hayan mencionado\n"
+        "- Escribe precios con números y 'pesos' (ej: 2500 pesos), NUNCA con '$'\n"
         "- Compras entre 3 y 5 productos máximo\n"
-        "- Cuando tengas suficientes, dices \"con eso está bien\" o similar\n"
-        "- Siempre eres el COMPRADOR, nunca vendes\n"
-        "- Usas pesos colombianos (COP)\n"
-        "- NUNCA uses el símbolo '$' para precios. Escribe los precios solo con números y la palabra 'pesos'\n"
-        "- Ejemplo correcto: '2500 pesos' o '2 mil pesos'. Ejemplo INCORRECTO: '$2500'\n\n"
-        "GESTIÓN DE CONTEXTO:\n"
-        "- Recuerda solo lo que se ha dicho en esta conversación\n"
-        "- No repitas preguntas o comentarios anteriores\n"
-        "- Mantén coherencia con lo ya acordado\n"
-        "- Cuando pagas, te despides y la conversación termina"
+        "- Cuando el vendedor pregunte cómo pagas, elige pago por QR y despídete"
     )
 
     # -- State-specific instructions --
 
     _STATE_INSTRUCTIONS: Dict[str, str] = {
         STATE_NEGOTIATING: (
-            "ESTADO: NEGOCIACIÓN ACTIVA\n"
-            "Comportamiento OBLIGATORIO:\n"
-            "- Cuando el vendedor dice un precio, DEBES pedir rebaja antes de aceptar\n"
-            "- Propón un precio 10-20% menor: si dice 10 mil, ofrece 8 mil o 8500\n"
-            "- Usa frases amables: \"¿Me lo deja en X?\", \"¿No me rebaja un poquito?\", "
-            "\"¿Y en X me lo da?\"\n"
-            "- Si te rechazan, intenta UNA vez más con precio intermedio\n"
-            "- Si rechazan 2 veces, acepta con frase como \"Bueno, está bien, me lo llevo\"\n"
-            "- NUNCA aceptes el primer precio sin intentar negociar\n"
-            "- Puedes preguntar por otros productos mientras negocias\n"
-            "Ejemplos de negociación:\n"
-            "- Vendedor: \"La docena a 10 mil\" → Tú: \"¿Me la deja en 8 mil?\"\n"
-            "- Vendedor: \"El kilo a 15 mil\" → Tú: \"¿Y en 12 mil me lo da?\"\n"
-            "- Vendedor: \"No puedo\" → Tú: \"¿Y en 9 mil entonces?\" (intento 2)"
+            "ESTADO: NEGOCIANDO\n"
+            "- NUNCA aceptes el primer precio, pide rebaja amable\n"
+            "- Si rechazan 2 veces, acepta: \"Bueno, me lo llevo\"\n"
+            "- Puedes preguntar por otros productos\n"
+            "Ej: Vendedor dice 10 mil → Tú: \"¿Me lo deja en 8 mil?\""
         ),
         STATE_BUILDING_ORDER: (
-            "ESTADO: ARMANDO PEDIDO - COMPRANDO MÁS PRODUCTOS\n"
-            "Comportamiento:\n"
-            "- El precio de productos anteriores YA ESTÁ ACEPTADO Y CERRADO\n"
-            "- NO vuelvas a negociar precios que ya aceptaste\n"
-            "- Pregunta por otros productos que quieras comprar\n"
-            "- Lleva la cuenta de cuántos productos has pedido (máximo 5 en total)\n"
-            "- NO repitas productos que ya pediste\n"
-            "- Puedes negociar el precio de NUEVOS productos solamente\n"
-            "- Cuando tengas entre 3 y 5 productos, procede al pago diciendo "
-            "\"con eso es todo\"\n"
-            "- Si el vendedor pregunta qué llevas, LISTA todos los productos que has pedido\n"
-            "Ejemplo: \"¿Qué más tiene?\" o \"¿Tiene cebollas?\" o "
-            "\"Con eso es todo, ¿cuánto sería?\""
+            "ESTADO: ARMANDO PEDIDO\n"
+            "- Precios anteriores YA están cerrados, NO renegocies\n"
+            "- Pregunta por nuevos productos, negocia solo los nuevos\n"
+            "- Si te preguntan qué llevas, lista tus productos\n"
+            "- Cuando tengas suficientes, di \"con eso es todo, ¿cuánto sería?\""
         ),
         STATE_READY_TO_PAY: (
             "ESTADO: LISTO PARA PAGAR\n"
-            "Comportamiento:\n"
-            "- Suma mentalmente el total de tu pedido y compáralo con el precio "
-            "que te da el vendedor\n"
-            "- Ya aceptaste todos los precios y decidiste comprar\n"
-            "- NO vuelvas a pedir descuentos ni a negociar\n"
-            "- Solo confirma el total y pregunta cómo pagar\n"
-            "- Mantén tu decisión de compra firme\n"
-            "Ejemplo: \"Listo, ¿cómo pago?\" o \"Perfecto, ¿me genera el cobro?\""
+            "- Ya decidiste comprar, NO pidas más descuentos\n"
+            "- Confirma el total y pregunta cómo pagar\n"
+            "Ej: \"Listo, ¿me genera el cobro?\""
         ),
         STATE_FINISHED: (
-            "ESTADO: CONVERSACIÓN TERMINADA\n"
-            "- Ya pagaste y te despediste\n"
-            "- No respondas más mensajes"
+            "ESTADO: TERMINADO\n"
+            "- Ya pagaste. Despídete brevemente y no respondas más."
         ),
     }
 
@@ -344,24 +299,22 @@ class ConversationEngine:
     ) -> Optional[str]:
         """Generate a response from Ollama with streaming."""
 
-        # Terminal state
+        # Terminal state — no more responses
         if self.state == STATE_FINISHED:
             print("[LLM] State FINISHED — no response generated")
             return None
 
-        # Seller asks for payment -> controlled response, end conversation
-        if self._seller_asks_payment(user_text):
-            print("[LLM] Payment request detected — finishing conversation")
+        # Seller asks for payment -> transition state, let LLM respond naturally
+        if self._seller_asks_payment(user_text) and self.state == STATE_READY_TO_PAY:
+            print("[LLM] Payment request detected — transitioning to FINISHED")
             self.state = STATE_FINISHED
-            return self._payment_response()
 
-        # Product limit reached
+        # Product limit reached -> transition state, let LLM respond naturally
         if self.state == STATE_BUILDING_ORDER:
             count = self._count_products(self.history)
             if count >= MAX_PRODUCTS:
                 print(f"[LLM] Product limit reached ({count}/{MAX_PRODUCTS})")
                 self.state = STATE_READY_TO_PAY
-                return self._ready_to_pay_response()
 
         # Build payload and stream from Ollama
         prompt = self._build_prompt(user_text)
@@ -447,43 +400,42 @@ class ConversationEngine:
         )
         parts.append("\n" + instruction)
 
+        # Price tracker context — give the LLM real data
+        tracker_summary = self.price_tracker.get_summary()
+        if self.price_tracker.products:
+            parts.append(f"\nTU LISTA DE COMPRAS ACTUAL:\n{tracker_summary}")
+
         # Product count info
+        count = self._count_products(trimmed)
+        product_list = self._extract_product_list(trimmed)
+
         if self.state in (STATE_BUILDING_ORDER, STATE_READY_TO_PAY):
-            count = self._count_products(trimmed)
-            product_list = self._extract_product_list(trimmed)
             parts.append(
-                f"\nPRODUCTOS PEDIDOS HASTA AHORA: {count} de {MAX_PRODUCTS} máximo"
+                f"\nProductos pedidos: {count} de {MAX_PRODUCTS} máximo."
             )
             if product_list:
-                parts.append(f"Lista mental de productos: {', '.join(product_list)}")
+                parts.append(f"Productos: {', '.join(product_list)}")
 
             if count >= MAX_PRODUCTS:
                 parts.append(
-                    "YA ALCANZASTE EL LÍMITE DE PRODUCTOS. "
-                    "Di 'con eso es todo' y pide el cobro."
+                    "LÍMITE ALCANZADO. Di 'con eso es todo' y pide el cobro."
                 )
             elif count >= MAX_PRODUCTS - 1:
-                parts.append(
-                    "Estás cerca del límite. Puedes pedir UN producto más como máximo."
-                )
+                parts.append("Cerca del límite. Máximo UN producto más.")
 
             if self._seller_asks_what_to_buy(user_text):
-                parts.append(
-                    "El vendedor pregunta qué llevas. LISTA todos los productos que has pedido."
-                )
-
-        parts.append("Instrucciones generales: Máximo 2 frases. TÚ ERES EL COMPRADOR.\n")
+                parts.append("El vendedor pregunta qué llevas. Lista tus productos.")
 
         # Conversation history
         if trimmed:
-            parts.append("--- Conversación previa ---")
+            parts.append("\n--- Conversación ---")
             for msg in trimmed:
-                label = "Vendedor" if msg["role"] == "user" else "Tú (Comprador)"
+                label = "Vendedor" if msg["role"] == "user" else "Andrea"
                 parts.append(f"{label}: {msg['content']}")
-            parts.append("--- Fin conversación previa ---\n")
+            parts.append("---\n")
 
-        parts.append(f"Vendedor dice ahora: {user_text}")
-        parts.append("\nTu respuesta (máximo 2 frases como comprador):")
+        parts.append(f"Vendedor: {user_text}")
+        parts.append("\nAndrea (máximo 3 frases):")
 
         return "\n".join(parts)
 
@@ -528,21 +480,23 @@ class ConversationEngine:
         if not s:
             return s
 
-        s = self._limit_to_two_sentences(s)
+        s = self._limit_sentences(s)
 
+        # Hard guardrail: role/currency violation (safety net only)
         if self._violates_role_or_currency(s):
             return "Vecino, yo estoy comprando y pago en pesos. ¿En cuánto me lo deja entonces?"
 
+        # Soft guardrail: in READY_TO_PAY, warn if LLM tries to reopen negotiation
         if self.state == STATE_READY_TO_PAY:
             if self._is_reopening_negotiation(s):
-                return self._ready_to_pay_response()
-            if self._buyer_ready_to_pay(s):
-                return s
+                # Append a redirect instead of replacing the entire response
+                return "Listo, con eso es todo. ¿Me genera el cobro por favor?"
 
         return s
 
     @staticmethod
-    def _limit_to_two_sentences(text: str) -> str:
+    def _limit_sentences(text: str, max_sentences: int = 3) -> str:
+        """Limit text to max_sentences. Respects decimal numbers and abbreviations."""
         s = sanitize_text(text)
         if not s:
             return s
@@ -552,7 +506,7 @@ class ConversationEngine:
         count = 0
         i = 0
 
-        while i < len(s) and count < 2:
+        while i < len(s) and count < max_sentences:
             ch = s[i]
             sentence.append(ch)
 
@@ -562,7 +516,13 @@ class ConversationEngine:
             elif ch == ".":
                 prev_c = s[i - 1] if i > 0 else ""
                 next_c = s[i + 1] if i + 1 < len(s) else ""
-                if not (prev_c.isdigit() and next_c.isdigit()):
+                # Don't split on decimal numbers (3.500)
+                if prev_c.isdigit() and next_c.isdigit():
+                    is_end = False
+                # Don't split on ellipsis (...)
+                elif next_c == ".":
+                    is_end = False
+                else:
                     is_end = True
 
             if is_end:
@@ -574,7 +534,7 @@ class ConversationEngine:
 
             i += 1
 
-        if count < 2:
+        if count < max_sentences:
             tail = "".join(sentence).strip()
             if tail:
                 out.append(tail)
@@ -594,14 +554,13 @@ class ConversationEngine:
     @staticmethod
     def _is_reopening_negotiation(text: str) -> bool:
         t = text.lower()
+        # Only match clear, unambiguous negotiation attempts
         patterns = [
-            r"\bme\s+lo\s+deja\b", r"\bme\s+la\s+deja\b",
-            r"\bme\s+los\s+deja\b", r"\bme\s+las\s+deja\b",
-            r"\bdéjemelo\b", r"\bdéjamelo\b",
+            r"\bme\s+lo\s+deja\s+en\b", r"\bme\s+la\s+deja\s+en\b",
+            r"\bme\s+los\s+deja\s+en\b", r"\bme\s+las\s+deja\s+en\b",
+            r"\bdéjemelo\s+en\b", r"\bdéjamelo\s+en\b",
             r"\brebaj[ae]\b", r"\bdescuento\b",
-            r"\bmás\s+barat[oa]\b", r"\bmenos\b.*\b(plata|precio)\b",
-            r"\bregáleme\b", r"\bregálame\b",
-            r"\bcafecito\b", r"\bpor\s+ese\s+precio\s+no\b",
+            r"\bmás\s+barat[oa]\b",
         ]
         return any(re.search(p, t, re.IGNORECASE) for p in patterns)
 
@@ -634,22 +593,37 @@ class ConversationEngine:
         current = self.state
         assistant_lower = assistant_text.lower()
 
+        # Already FINISHED (set by _generate on payment detection)
+        if current == STATE_FINISHED:
+            return STATE_FINISHED
+
         # NEGOTIATING -> BUILDING_ORDER
         if current == STATE_NEGOTIATING:
+            # Only transition if the assistant explicitly accepts a price
             accept_phrases = [
-                "listo", "bueno", "está bien", "ok", "dale", "sí", "si",
-                "me llevo", "me los llevo", "me lo llevo", "perfecto", "de una",
+                "me llevo", "me los llevo", "me lo llevo",
+                "bueno, está bien", "de una", "listo, me",
             ]
+            soft_accept = ["listo", "bueno", "está bien", "dale", "perfecto"]
+
+            # Strong accept: explicit acceptance phrase
             if any(p in assistant_lower for p in accept_phrases):
                 if self._seller_confirms_price(user_text) or self._has_cop_amount(user_text):
+                    return STATE_BUILDING_ORDER
+
+            # Soft accept: only with confirmed price + seller rejection history
+            if any(p in assistant_lower for p in soft_accept):
+                if self._seller_confirms_price(user_text):
                     return STATE_BUILDING_ORDER
 
                 rejection_count = sum(
                     1 for msg in self.history[-6:]
                     if msg["role"] == "user"
-                    and any(w in msg["content"].lower() for w in ["no", "precio fijo", "no puedo"])
+                    and any(w in msg["content"].lower() for w in [
+                        "no puedo", "precio fijo", "no le puedo", "imposible",
+                    ])
                 )
-                if rejection_count >= 2:
+                if rejection_count >= 2 and self._has_cop_amount(user_text):
                     return STATE_BUILDING_ORDER
 
         # BUILDING_ORDER -> READY_TO_PAY
@@ -657,17 +631,15 @@ class ConversationEngine:
             if self._buyer_ready_to_pay(assistant_text):
                 return STATE_READY_TO_PAY
 
-            if self._seller_confirms_price(user_text):
-                ready = ["listo", "perfecto", "cómo pago", "como pago", "generar"]
-                if any(p in assistant_lower for p in ready):
-                    return STATE_READY_TO_PAY
-
             if self._count_products(self.history) >= MAX_PRODUCTS:
                 return STATE_READY_TO_PAY
 
         # READY_TO_PAY -> FINISHED
         elif current == STATE_READY_TO_PAY:
             if self._seller_asks_payment(user_text):
+                return STATE_FINISHED
+            # Also detect if Andrea herself chose payment method
+            if self._buyer_chose_payment(assistant_text):
                 return STATE_FINISHED
 
         return current
@@ -783,12 +755,14 @@ class ConversationEngine:
         return list(products)
 
     @staticmethod
-    def _payment_response() -> str:
-        return "Prefiero pagar por QR, es más cómodo y seguro que cargar efectivo. Muchas gracias, que tenga buen día."
-
-    @staticmethod
-    def _ready_to_pay_response() -> str:
-        return "Listo, con eso es todo. ¿Me genera el cobro por favor?"
+    def _buyer_chose_payment(text: str) -> bool:
+        """Detect if buyer chose a payment method in their response."""
+        t = text.lower()
+        payment_methods = ["pago por qr", "por qr", "con qr", "transferencia", "efectivo"]
+        farewell = ["buen día", "buen dia", "gracias", "hasta luego", "chao"]
+        has_payment = any(p in t for p in payment_methods)
+        has_farewell = any(f in t for f in farewell)
+        return has_payment and has_farewell
 
 
 # ---------------------------------------------------------------------------

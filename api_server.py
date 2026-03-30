@@ -7,7 +7,6 @@ Supports both push (port 8001) and polling (GET /get_latest_response) delivery.
 import asyncio
 import json
 import os
-import queue
 import time
 import warnings
 import logging
@@ -68,8 +67,6 @@ app.add_middleware(
 
 engine = ConversationEngine()
 recorder = AudioRecorder()
-
-vr_response_queue: queue.Queue = queue.Queue()
 
 latest_ai_response: Dict[str, Any] = {
     "response": "",
@@ -169,11 +166,6 @@ async def process_audio_background(audio_path: str) -> None:
 
             conversation_finished = engine.state == STATE_FINISHED
 
-            # Fallback: if response contains "pago por qr", force finished
-            if not conversation_finished and "pago por qr" in ai_response.lower():
-                conversation_finished = True
-                engine.state = STATE_FINISHED
-
             latest_ai_response = {
                 "response": ai_response,
                 "state": engine.state,
@@ -199,28 +191,10 @@ async def root():
     return {"message": "AI Voice Server API running", "status": "healthy", "version": "1.0.0"}
 
 
-@app.get("/latest_response", summary="Get latest response for VR (queue-based)")
+@app.get("/latest_response", summary="Get latest response for VR")
 async def get_latest_response():
-    """VR polling endpoint (thread-safe queue)."""
-    try:
-        response_text = vr_response_queue.get_nowait()
-        finished = "pago por qr" in response_text.lower()
-        resp_state = "FINISHED" if finished else "negotiating"
-        poll_response = {
-            "response": response_text,
-            "state": resp_state,
-            "conversation_finished": finished,
-            "conversation_negotiation_cancel": False,
-        }
-        print(f"[API] Polled JSON: {json.dumps(poll_response, ensure_ascii=False)}")
-        return poll_response
-    except queue.Empty:
-        return {
-            "response": "",
-            "state": "waiting",
-            "conversation_finished": False,
-            "conversation_negotiation_cancel": False,
-        }
+    """VR polling endpoint — unified with /get_latest_response."""
+    return await get_latest_response_polling()
 
 
 @app.post("/voice_record", response_model=VoiceResponse, summary="Record and process voice")
@@ -237,7 +211,7 @@ async def voice_record(request: VoiceRecordRequest):
         if error:
             raise HTTPException(status_code=500, detail=error)
 
-        finished = "pago por qr" in result["response"].lower() or result["state"] == STATE_FINISHED
+        finished = result["state"] == STATE_FINISHED
         print(f"[API] /voice_record conversation_finished={finished}")
         return VoiceResponse(
             transcription=result["transcription"],
