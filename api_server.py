@@ -166,6 +166,11 @@ async def process_audio_background(audio_path: str) -> None:
 
             conversation_finished = engine.state == STATE_FINISHED
 
+            # Safety net: if LLM says "pago por qr" but state didn't catch it
+            if not conversation_finished and "pago por qr" in ai_response.lower():
+                conversation_finished = True
+                engine.state = STATE_FINISHED
+
             latest_ai_response = {
                 "response": ai_response,
                 "state": engine.state,
@@ -211,7 +216,7 @@ async def voice_record(request: VoiceRecordRequest):
         if error:
             raise HTTPException(status_code=500, detail=error)
 
-        finished = result["state"] == STATE_FINISHED
+        finished = result["state"] == STATE_FINISHED or "pago por qr" in result["response"].lower()
         print(f"[API] /voice_record conversation_finished={finished}")
         return VoiceResponse(
             transcription=result["transcription"],

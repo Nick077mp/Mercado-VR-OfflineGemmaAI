@@ -304,10 +304,11 @@ class ConversationEngine:
             print("[LLM] State FINISHED — no response generated")
             return None
 
-        # Seller asks for payment -> transition state, let LLM respond naturally
+        # Seller asks for payment -> fixed QR response (VR protocol)
         if self._seller_asks_payment(user_text) and self.state == STATE_READY_TO_PAY:
-            print("[LLM] Payment request detected — transitioning to FINISHED")
+            print("[LLM] Payment request detected — finishing conversation")
             self.state = STATE_FINISHED
+            return self._payment_response()
 
         # Product limit reached -> transition state, let LLM respond naturally
         if self.state == STATE_BUILDING_ORDER:
@@ -755,14 +756,15 @@ class ConversationEngine:
         return list(products)
 
     @staticmethod
+    def _payment_response() -> str:
+        """Fixed QR payment response — VR parses 'pago por qr' to close conversation."""
+        return "Prefiero pago por QR, es más cómodo y seguro. Muchas gracias, que tenga buen día."
+
+    @staticmethod
     def _buyer_chose_payment(text: str) -> bool:
         """Detect if buyer chose a payment method in their response."""
         t = text.lower()
-        payment_methods = ["pago por qr", "por qr", "con qr", "transferencia", "efectivo"]
-        farewell = ["buen día", "buen dia", "gracias", "hasta luego", "chao"]
-        has_payment = any(p in t for p in payment_methods)
-        has_farewell = any(f in t for f in farewell)
-        return has_payment and has_farewell
+        return "pago por qr" in t or "por qr" in t
 
 
 # ---------------------------------------------------------------------------
