@@ -31,6 +31,7 @@ from services.ollama_service import (
     ConversationEngine,
     sanitize_text,
     STATE_FINISHED,
+    ROLE_DON_JOSE,
 )
 
 from services.stt_faster_whisper import transcribe_audio_file
@@ -174,6 +175,11 @@ async def process_audio_background(audio_path: str) -> None:
                 conversation_finished = True
                 engine.state = STATE_FINISHED
 
+            # Auto-switch to Don Jose role after first conversation ends
+            if conversation_finished and engine.current_role != ROLE_DON_JOSE:
+                engine.switch_role(ROLE_DON_JOSE)
+                print("[API] Role switched to Don Jose for next conversation")
+
             latest_ai_response = {
                 "response": ai_response,
                 "state": engine.state,
@@ -239,6 +245,12 @@ async def voice_record(request: VoiceRecordRequest):
 
         finished = "pago por qr" in result["response"].lower() or result["state"] == STATE_FINISHED
         print(f"[API] /voice_record conversation_finished={finished}")
+
+        # Auto-switch to Don Jose role after first conversation ends
+        if finished and engine.current_role != ROLE_DON_JOSE:
+            engine.switch_role(ROLE_DON_JOSE)
+            print("[API] Role switched to Don Jose for next conversation")
+
         return VoiceResponse(
             transcription=result["transcription"],
             response=result["response"],
