@@ -126,34 +126,77 @@ def extract_price_and_product(text: str) -> Optional[Tuple[str, int]]:
 # ---------------------------------------------------------------------------
 
 class PriceTracker:
-    """Tracks products, quantities, prices and validates seller totals."""
+    """Tracks quoted prices (from seller) and confirmed purchases (from buyer).
+
+    Two separate lists:
+      - quoted: prices the seller mentioned (reference only)
+      - purchased: products Andrea explicitly said she's buying
+    """
+
+    _BUY_RE = re.compile(
+        r"\b(?:me\s+llevo|llevo|me\s+da|deme|déme|me\s+tomo|le\s+tomo|"
+        r"quiero|necesito|dame|me\s+lo\s+llevo|me\s+los\s+llevo|me\s+las\s+llevo)\b",
+        re.IGNORECASE,
+    )
 
     def __init__(self) -> None:
-        self.products: Dict[str, Dict[str, int]] = {}
-        self.total_calculated: int = 0
+        self.quoted: Dict[str, int] = {}       # product -> price (seller mentioned)
+        self.purchased: Dict[str, int] = {}    # product -> price (Andrea confirmed)
+
+    def quote_product(self, name: str, price: int) -> None:
+        """Register a price mentioned by the seller."""
+        self.quoted[name.lower()] = price
+
+    def confirm_purchase(self, name: str, price: int) -> None:
+        """Register a product Andrea confirmed buying."""
+        self.purchased[name.lower()] = price
+
+    def detect_purchases(self, andrea_text: str, seller_text: str) -> None:
+        """Analyze Andrea's response to detect purchase confirmations.
+
+        Cross-references buy phrases in Andrea's text with quoted prices.
+        """
+        if not self._BUY_RE.search(andrea_text):
+            return
+
+        a_lower = andrea_text.lower()
+        # Check if Andrea mentions any quoted product in a buy context
+        for product, price in self.quoted.items():
+            if product in a_lower:
+                self.confirm_purchase(product, price)
+                print(f"[LLM] Purchase confirmed: {product} @ {price} COP")
+
+    def get_quoted_summary(self) -> str:
+        """Summary of prices mentioned by seller (reference)."""
+        if not self.quoted:
+            return ""
+        lines = [f"- {n}: {p} pesos" for n, p in self.quoted.items()]
+        return "\n".join(lines)
+
+    def get_purchased_summary(self) -> str:
+        """Summary of products Andrea confirmed buying."""
+        if not self.purchased:
+            return ""
+        total = sum(self.purchased.values())
+        lines = [f"- {n}: {p} pesos" for n, p in self.purchased.items()]
+        lines.append(f"Total aproximado: {total} pesos")
+        return "\n".join(lines)
+
+    # Legacy compatibility
+    @property
+    def products(self) -> Dict[str, Dict[str, int]]:
+        return {n: {"quantity": 1, "price": p, "subtotal": p}
+                for n, p in self.purchased.items()}
+
+    @property
+    def total_calculated(self) -> int:
+        return sum(self.purchased.values())
 
     def add_product(self, name: str, quantity: int, price: int) -> None:
-        self.products[name.lower()] = {
-            "quantity": quantity,
-            "price": price,
-            "subtotal": quantity * price,
-        }
-        self._recalculate()
-
-    def _recalculate(self) -> None:
-        self.total_calculated = sum(
-            p["quantity"] * p["price"] for p in self.products.values()
-        )
+        self.quote_product(name, price)
 
     def get_summary(self) -> str:
-        if not self.products:
-            return ""
-        lines = [
-            f"- {n}: {d['quantity']} x {d['price']} = {d['subtotal']}"
-            for n, d in self.products.items()
-        ]
-        lines.append(f"TOTAL: {self.total_calculated}")
-        return "\n".join(lines)
+        return self.get_purchased_summary()
 
 
 # ---------------------------------------------------------------------------
@@ -201,6 +244,11 @@ class ConversationEngine:
         "- Compras varios productos (3 a 5), no solo uno\n"
         "- Cuando ya tienes suficientes productos, pides la cuenta\n"
         "- Respondes natural, como en una conversación real de plaza de mercado\n\n"
+        "FLUJO DE COMPRA:\n"
+        "- Preguntar el precio NO es comprar. Para comprar debes decir cuántos\n"
+        "  te llevas (ej: 'Deme dos', 'Me llevo un kilo')\n"
+        "- Primero pregunta precio, luego negocia, luego confirma cuántos llevas\n"
+        "- No saltes a otro producto sin antes confirmar si te llevas el actual\n\n"
         "IMPORTANTE:\n"
         "- Siempre eres la COMPRADORA\n"
         "- Escucha lo que dice el vendedor y responde a lo que dice, no repitas lo mismo\n"
@@ -236,7 +284,7 @@ class ConversationEngine:
         user_text: str,
         on_first_sentence: Optional[Callable[[str], None]] = None,
     ) -> Tuple[Optional[str], str]:
-        """Full pipeline: sanitize -> detect prices -> generate -> update state.
+        """Full pipeline: sanitize -> quote prices -> generate -> detect purchases.
 
         Returns ``(response_text, current_state)``.
         """
@@ -244,18 +292,20 @@ class ConversationEngine:
         if not text:
             return None, self.state
 
-        # Register products/prices mentioned by the seller
+        # BEFORE generation: register prices QUOTED by the seller (not purchased)
         product_info = extract_price_and_product(text)
         if product_info:
             name, price = product_info
-            self.price_tracker.add_product(name, 1, price)
-            print(f"[LLM] Product registered: {name} x1 @ {price} COP")
+            self.price_tracker.quote_product(name, price)
+            print(f"[LLM] Price quoted by seller: {name} @ {price} COP")
 
         # Generate LLM response
         response = self._generate(text, on_first_sentence)
 
-        # Update history
+        # AFTER generation: detect purchases CONFIRMED by Andrea
         if response:
+            self.price_tracker.detect_purchases(response, text)
+
             self.history.extend([
                 {"role": "user", "content": text},
                 {"role": "assistant", "content": response},
@@ -370,13 +420,26 @@ class ConversationEngine:
         trimmed = trim_history(self.history)
         parts: List[str] = []
 
-        # System prompt — persona only
+        # System prompt — persona + purchase flow
         parts.append(self._SYSTEM_PROMPT)
 
-        # Price tracker context — give the LLM awareness of what's been bought
-        tracker_summary = self.price_tracker.get_summary()
-        if tracker_summary:
-            parts.append(f"\nProductos que llevas hasta ahora:\n{tracker_summary}")
+        # Purchased products — what Andrea has confirmed buying
+        purchased_summary = self.price_tracker.get_purchased_summary()
+        if purchased_summary:
+            parts.append(f"\nProductos que ya confirmaste llevar:\n{purchased_summary}")
+
+        # Quoted prices — reference only, not purchased
+        quoted_only = {
+            k: v for k, v in self.price_tracker.quoted.items()
+            if k not in self.price_tracker.purchased
+        }
+        if quoted_only:
+            lines = [f"- {n}: {p} pesos" for n, p in quoted_only.items()]
+            parts.append(
+                "\nPrecios que te mencionaron pero NO has confirmado compra:\n"
+                + "\n".join(lines)
+                + "\n(Si quieres alguno, dile al vendedor cuántos te llevas)"
+            )
 
         # Turn count context — gentle nudge, not a command
         turn_count = len(trimmed) // 2
